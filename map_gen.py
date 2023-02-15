@@ -1,17 +1,12 @@
 import requests
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
+from shapely import Point, Polygon
 
 class Coordinate:
     def __init__(self, longtitude, latitude):
         self.longtitude = longtitude
         self.latitude = latitude
-
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
 
 class Room:
     def __init__(self, origin, coordinates):
@@ -60,16 +55,52 @@ def coordinates_to_origin_points(origin, coords):
 
     return points
 
+def create_rectangular_grid(min_p, max_p, resolution):
+    x = np.arange(min_p.x, max_p.x, resolution)
+    y = np.arange(min_p.y, max_p.y, resolution)
+
+    xv, yv = np.meshgrid(x, y)
+
+    points = zip(xv.flatten(), yv.flatten())
+    
+    return [Point(p[0], p[1]) for p in points]
+
+def create_bounding_grid(points, resolution):
+    min_x = float('inf')
+    min_y = float('inf')
+    max_x = -float('inf')
+    max_y = -float('inf')
+
+    for p in points:
+        min_x = min(min_x, p.x)
+        min_y = min(min_y, p.y)
+
+        max_x = max(max_x, p.x)
+        max_y = max(max_y, p.y)
+
+    min_p = Point(min_x, min_y)
+    max_p = Point(max_x, max_y)
+
+    return create_rectangular_grid(min_p, max_p, resolution)
+
+    
 def main():
     room = fetch_room(ROOM_URL)
-    points = coordinates_to_origin_points(room.origin, room.coordinates)
-    num_points = len(points)
+    room_points = coordinates_to_origin_points(room.origin, room.coordinates)
 
-    for i in range(num_points):
-        p = points[i]
-        p_next = points[(i + 1) % num_points]
+    room_polygon = Polygon(room_points)
+    grid = create_bounding_grid(room_points, 0.5)
 
-        plt.plot([p.x, p_next.x], [p.y, p_next.y], color='black')
+    num_room_points = len(room_points)
+    for i in range(num_room_points):
+        p = room_points[i]
+        p_next = room_points[(i + 1) % num_room_points]
+
+        plt.plot([p.x, p_next.x], [p.y, p_next.y], color='red')
+
+    valid_grid = filter(room_polygon.contains, grid)
+    for p in valid_grid:
+        plt.plot(p.x, p.y, 'o', ms=1, color='black')    
 
     plt.show()
 
