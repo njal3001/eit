@@ -1,7 +1,7 @@
 import requests
 import matplotlib.pyplot as plt
 import numpy as np
-from shapely import Point, Polygon
+from shapely import Point, Polygon, LineString
 
 class Coordinate:
     def __init__(self, longtitude, latitude):
@@ -88,7 +88,9 @@ def main():
     room = fetch_room(ROOM_URL)
     room_points = coordinates_to_origin_points(room.origin, room.coordinates)
 
+    # TODO: Might be better to use LineString
     room_polygon = Polygon(room_points)
+
     grid = create_bounding_grid(room_points, 0.5)
 
     num_room_points = len(room_points)
@@ -101,6 +103,19 @@ def main():
     valid_grid = filter(room_polygon.contains, grid)
     for p in valid_grid:
         plt.plot(p.x, p.y, 'o', ms=1, color='black')    
+
+
+    # line_start = (0, 0)
+    # line_end = (20, 10)
+
+    # room_line = room_polygon.boundary
+    # line = LineString([line_start, line_end])
+
+    # plt.plot([line_start[0], line_end[0]], [line_start[1], line_start[1]], color='green')
+
+    # intersection = room_line.intersection(line)
+    # print(len(intersection.geoms))
+
 
     plt.show()
 
