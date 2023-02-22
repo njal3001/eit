@@ -8,15 +8,20 @@ class Wall:
     CONCRETE = 2
 
 def solve(grid, room_polygon):
+    MAX_RADIUS = calc_rad(MAX_LOSS)
     access_point_covers = []
 
     for access_point_candidate in grid:
         access_point_cover = np.zeros(len(grid)) # number of points
         for i in range(len(grid)):
             point = grid[i]
+            d = distance(point, access_point_candidate)
+            
+            if d > MAX_RADIUS:
+                continue
+
             intersecting_walls = check_line_of_sight(point, access_point_candidate, room_polygon)
             radius = calc_rad(MAX_LOSS, intersecting_walls)
-            d = distance(point, access_point_candidate)
 
             if d <= radius:
                 access_point_cover[i] = 1
