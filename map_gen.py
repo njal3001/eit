@@ -1,9 +1,14 @@
 import requests
 import matplotlib.pyplot as plt
 import numpy as np
-from shapely import Point, Polygon, LineString
+from shapely import Point, Polygon, MultiPolygon
 import solver
 from optimization import set_cover
+
+U1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41588046866937&lng=10.405878134312957&z=-1&srid=4326'
+GROUP_ROOM_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.4157625337231&lng=10.40580125094317&z=-1&srid=4326'
+AU1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415572384234764&lng=10.404863704147175&z=-1&srid=4326'
+R23_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415725767409924&lng=10.405624136872206&z=-2&srid=4326'
 
 class Coordinate:
     def __init__(self, longtitude, latitude):
@@ -11,33 +16,34 @@ class Coordinate:
         self.latitude = latitude
 
 class Room:
-    def __init__(self, origin, coordinates):
+    def __init__(self, origin, coordinates, holes):
         self.origin = origin
         self.coordinates = coordinates
-
-ROOM_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41588046866937&lng=10.405878134312957&z=-1&srid=4326' # U1
-# ROOM_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.4157625337231&lng=10.40580125094317&z=-1&srid=4326' # U1 group room
-# ROOM_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415725767409924&lng=10.405624136872206&z=-2&srid=4326' # R23
+        self.holes = holes
 
 def degree_to_rad(d):
     return np.pi * d / 180.0
 
 def fetch_room(url):
+    coord_map = lambda c: Coordinate(c[0], c[1])
+
     response = requests.get(url)
     if response.status_code == 200:
         rjson = response.json()
-
-        response_coords = rjson['geometry']['coordinates'][0]
-        coords = []
-        for c in response_coords:
-            coords.append(Coordinate(c[0], c[1]))
-
+        response_coords = rjson['geometry']['coordinates']
         response_origin = rjson['point']['coordinates']
+
+        coords = list(map(coord_map, response_coords[0]))
+
+        holes = []
+        for i in range(1, len(response_coords)):
+            holes.append(list(map(coord_map, response_coords[i])))
+
         origin = Coordinate(response_origin[0], response_origin[1])
 
-        return Room(origin, coords)
+        return Room(origin, coords, holes)
 
-    return Room(None, [])
+    return Room(None, [], [])
 
 def coordinate_difference(start, end):
     METERS_PER_LATITUDE = 110574.0
@@ -87,40 +93,41 @@ def create_bounding_grid(points, resolution):
 
 
 def main():
-    room = fetch_room(ROOM_URL)
-    room_points = coordinates_to_origin_points(room.origin, room.coordinates)
+    # urls = [U1_URL, GROUP_ROOM_URL]
+    urls = [AU1_URL]
+    rooms = []
+    for url in urls:
+        rooms.append(fetch_room(url))
 
-    # TODO: Might be better to use LineString
-    room_polygon = Polygon(room_points)
+    coordinate_origin = rooms[0].origin
+    all_points = []
+    polygons = []
+    for r in rooms:
+        points = coordinates_to_origin_points(coordinate_origin, r.coordinates)
+        hole_points = []
+        for h in r.holes:
+            hole_points.append(coordinates_to_origin_points(coordinate_origin, h))
 
-    grid = create_bounding_grid(room_points, 0.5)
+        all_points += points
+        polygons.append(Polygon(points, holes=hole_points))
 
-    num_room_points = len(room_points)
-    for i in range(num_room_points):
-        p = room_points[i]
-        p_next = room_points[(i + 1) % num_room_points]
+    full_polygon = MultiPolygon(polygons)
+    grid = create_bounding_grid(all_points, 2.0)
+    valid_grid = list(filter(full_polygon.contains, grid))
 
-        plt.plot([p.x, p_next.x], [p.y, p_next.y], color='red')
+    for geom in full_polygon.geoms:
+        xe, ye = geom.exterior.xy
+        plt.plot(xe, ye, color='red')
 
-    valid_grid = list(filter(room_polygon.contains, grid))
+        for interior in geom.interiors:
+            xi, yi = zip(*interior.coords[:])
+            plt.plot(xi, yi, color='red')
+
     for p in valid_grid:
         plt.plot(p.x, p.y, 'o', ms=1, color='black')
 
-    covers = solver.solve(valid_grid, room_polygon)
-    # first_cover = covers[80]
-
-    # cover_point = valid_grid[80]
-    # for i in range(len(first_cover)):
-    #     if first_cover[i] == 1:
-    #         p = valid_grid[i]
-    #         plt.plot(p.x, p.y, 'o', ms=5, color='green')
-
-    # plt.plot(cover_point.x, cover_point.y, 'o', ms=5, color='black')
-
-
-    
+    covers = solver.solve(valid_grid, full_polygon)
     res = set_cover(np.array(covers))
-    print(res.x)
     colors = ["red", "blue", "yellow", "orange"]
     k = 0
     for i in range(len(res.x)):
@@ -133,8 +140,7 @@ def main():
                 if cover[j] == 1:
                     p1 = valid_grid[j]
                     plt.plot(p1.x, p1.y, "o", ms=2, color=colors[k])
-            k = k + 1 % len(colors) 
-
+            k = k + 1 % len(colors)
 
     plt.show()
 
