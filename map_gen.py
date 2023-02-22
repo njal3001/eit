@@ -93,7 +93,7 @@ def main():
     # TODO: Might be better to use LineString
     room_polygon = Polygon(room_points)
 
-    grid = create_bounding_grid(room_points, 2)
+    grid = create_bounding_grid(room_points, 0.5)
 
     num_room_points = len(room_points)
     for i in range(num_room_points):
