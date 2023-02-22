@@ -133,7 +133,7 @@ def main():
                 if cover[j] == 1:
                     p1 = valid_grid[j]
                     plt.plot(p1.x, p1.y, "o", ms=2, color=colors[k])
-            k+=1
+            k = k + 1 % len(colors) 
 
 
     plt.show()
