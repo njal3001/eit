@@ -19,7 +19,7 @@ def solve(grid, room_polygon):
 def calc_rad(threshold, walls = []):
     f = 5.2 * 1e9
     N = 31
-    n = 0 
+    n = 0
     """"
     Calculates the radiuses for each number of walls following the ITU model
     for indoor path loss:
@@ -30,11 +30,17 @@ def calc_rad(threshold, walls = []):
     pass
 
 def check_line_of_sight(start, end, polygon):
-    poly_lines = polygon.boundary
     line = LineString([start, end])
+    intersection = polygon.boundary.intersects(line)
 
-    intersection = poly_lines.intersects(line)
-    return intersection.size()
+    if intersection.geom_type == 'Point':
+        num_intersections = 1
+    elif intersection.geom_type == 'MultiPoint':
+        num_intersections = len(list(set(list(intersection.geoms))))
+    else:
+        num_intersections = 0
+
+    return num_intersections
 
 def distance(p0, p1):
     """""

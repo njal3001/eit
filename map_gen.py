@@ -62,7 +62,7 @@ def create_rectangular_grid(min_p, max_p, resolution):
     xv, yv = np.meshgrid(x, y)
 
     points = zip(xv.flatten(), yv.flatten())
-    
+
     return [Point(p[0], p[1]) for p in points]
 
 def create_bounding_grid(points, resolution):
@@ -83,7 +83,7 @@ def create_bounding_grid(points, resolution):
 
     return create_rectangular_grid(min_p, max_p, resolution)
 
-    
+
 def main():
     room = fetch_room(ROOM_URL)
     room_points = coordinates_to_origin_points(room.origin, room.coordinates)
@@ -102,20 +102,7 @@ def main():
 
     valid_grid = filter(room_polygon.contains, grid)
     for p in valid_grid:
-        plt.plot(p.x, p.y, 'o', ms=1, color='black')    
-
-
-    # line_start = (0, 0)
-    # line_end = (20, 10)
-
-    # room_line = room_polygon.boundary
-    # line = LineString([line_start, line_end])
-
-    # plt.plot([line_start[0], line_end[0]], [line_start[1], line_start[1]], color='green')
-
-    # intersection = room_line.intersection(line)
-    # print(len(intersection.geoms))
-
+        plt.plot(p.x, p.y, 'o', ms=1, color='black')
 
     plt.show()
 
