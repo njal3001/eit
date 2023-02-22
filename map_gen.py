@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from shapely import Point, Polygon, LineString
 import solver
+from optimization import set_cover
 
 class Coordinate:
     def __init__(self, longtitude, latitude):
@@ -106,15 +107,33 @@ def main():
         plt.plot(p.x, p.y, 'o', ms=1, color='black')
 
     covers = solver.solve(valid_grid, room_polygon)
-    first_cover = covers[80]
+    # first_cover = covers[80]
 
-    cover_point = valid_grid[80]
-    for i in range(len(first_cover)):
-        if first_cover[i] == 1:
+    # cover_point = valid_grid[80]
+    # for i in range(len(first_cover)):
+    #     if first_cover[i] == 1:
+    #         p = valid_grid[i]
+    #         plt.plot(p.x, p.y, 'o', ms=5, color='green')
+
+    # plt.plot(cover_point.x, cover_point.y, 'o', ms=5, color='black')
+
+
+    
+    res = set_cover(np.array(covers))
+    print(res.x)
+    colors = ["red", "blue", "yellow", "orange"]
+    k = 0
+    for i in range(len(res.x)):
+        if res.x[i] == 1:
             p = valid_grid[i]
             plt.plot(p.x, p.y, 'o', ms=5, color='green')
 
-    plt.plot(cover_point.x, cover_point.y, 'o', ms=5, color='black')
+            cover = covers[i]
+            for j in range(len(cover)):
+                if cover[j] == 1:
+                    p1 = valid_grid[j]
+                    plt.plot(p1.x, p1.y, "o", ms=2, color=colors[k])
+            k+=1
 
 
     plt.show()
