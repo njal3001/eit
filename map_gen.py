@@ -2,6 +2,7 @@ import requests
 import matplotlib.pyplot as plt
 import numpy as np
 from shapely import Point, Polygon, LineString
+import solver
 
 class Coordinate:
     def __init__(self, longtitude, latitude):
@@ -91,7 +92,7 @@ def main():
     # TODO: Might be better to use LineString
     room_polygon = Polygon(room_points)
 
-    grid = create_bounding_grid(room_points, 0.5)
+    grid = create_bounding_grid(room_points, 2)
 
     num_room_points = len(room_points)
     for i in range(num_room_points):
@@ -100,9 +101,21 @@ def main():
 
         plt.plot([p.x, p_next.x], [p.y, p_next.y], color='red')
 
-    valid_grid = filter(room_polygon.contains, grid)
+    valid_grid = list(filter(room_polygon.contains, grid))
     for p in valid_grid:
         plt.plot(p.x, p.y, 'o', ms=1, color='black')
+
+    covers = solver.solve(valid_grid, room_polygon)
+    first_cover = covers[80]
+
+    cover_point = valid_grid[80]
+    for i in range(len(first_cover)):
+        if first_cover[i] == 1:
+            p = valid_grid[i]
+            plt.plot(p.x, p.y, 'o', ms=5, color='green')
+
+    plt.plot(cover_point.x, cover_point.y, 'o', ms=5, color='black')
+
 
     plt.show()
 
