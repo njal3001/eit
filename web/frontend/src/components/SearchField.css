@@ -1,0 +1,48 @@
+.searchfield-form {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.searchfield-form > * {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin: 0.5rem 0;
+}
+
+.searchfield-container {
+  flex-direction: row;
+  width: 500px;
+  height: 4rem;
+  background-color: rgba(200, 200, 200, 0.15);
+}
+
+#searchfield {
+  width: 400px;
+  height: 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.75);
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#searchfield-button {
+  border-radius: 5px;
+  background-color: rgb(0, 139, 139);
+  border: none;
+  cursor: pointer;
+}
+
+#searchfield-button.disabled {
+  background-color: grey;
+}
+
+#searchfield-button.clicked {
+  background-color: rgb(0, 99, 99);
+}
+
+#magnifying-glass {
+  color:rgba(255, 255, 255, 0.3);
+  margin-right: 0.75rem;
+}

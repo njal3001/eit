@@ -1,0 +1,10 @@
+.urloverview-container {
+  width: 250px;
+  padding: 1rem;
+  background-color: rgba(200, 200, 200, 0.15);;
+}
+
+.url {
+  padding-left: 0.5rem;
+  color: rgba(255, 255, 255, 0.7);
+}
