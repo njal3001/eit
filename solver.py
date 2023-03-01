@@ -35,7 +35,7 @@ def calc_rad(max_loss, walls = []):
     """
     walls: Wall[]
     """
-    f = 5.2 * 1e3
+    f = 5.2e3
     N = 31
     P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
     """"
