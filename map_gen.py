@@ -1,12 +1,14 @@
 import requests
 import matplotlib.pyplot as plt
 import numpy as np
-from shapely import Point, Polygon, MultiPolygon
+from shapely import Point, Polygon, MultiPolygon, LineString
 import solver
 from optimization import set_cover
 
 U1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41588046866937&lng=10.405878134312957&z=-1&srid=4326'
-GROUP_ROOM_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.4157625337231&lng=10.40580125094317&z=-1&srid=4326'
+GROUP_ROOM1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.4157625337231&lng=10.40580125094317&z=-1&srid=4326'
+GROUP_ROOM2_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415778169738985&lng=10.405763737058976&z=-1&srid=4326'
+GROUP_ROOM3_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41578525812142&lng=10.405826002710683&z=-1&srid=4326'
 AU1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415572384234764&lng=10.404863704147175&z=-1&srid=4326'
 R23_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415725767409924&lng=10.405624136872206&z=-2&srid=4326'
 
@@ -93,8 +95,8 @@ def create_bounding_grid(points, resolution):
 
 
 def main():
-    # urls = [U1_URL, GROUP_ROOM_URL]
-    urls = [AU1_URL]
+    urls = [U1_URL, GROUP_ROOM1_URL, GROUP_ROOM2_URL]
+    #urls = [AU1_URL]
     rooms = []
     for url in urls:
         rooms.append(fetch_room(url))
@@ -109,38 +111,51 @@ def main():
             hole_points.append(coordinates_to_origin_points(coordinate_origin, h))
 
         all_points += points
-        polygons.append(Polygon(points, holes=hole_points))
 
-    full_polygon = MultiPolygon(polygons)
+        # Add a buffer around Polygon to reduce distance between duplicate walls
+        polygons.append(Polygon(points, holes=hole_points).buffer(solver.WALL_TOLERANCE))
+
+    # Merge rooms into single MultiPolygon
+    full_polygon = polygons[0]
+    for p in polygons[1:]:
+        full_polygon = full_polygon.union(p)
+
+    if full_polygon.geom_type == 'Polygon':
+        full_polygon = MultiPolygon([full_polygon])
+
     grid = create_bounding_grid(all_points, 2.0)
     valid_grid = list(filter(full_polygon.contains, grid))
 
+    colors = ["red", "blue", "yellow", "orange"]
+    color_index = 0
     for geom in full_polygon.geoms:
         xe, ye = geom.exterior.xy
-        plt.plot(xe, ye, color='red')
+        plt.plot(xe, ye, color=colors[color_index], alpha=0.7)
 
         for interior in geom.interiors:
             xi, yi = zip(*interior.coords[:])
-            plt.plot(xi, yi, color='red')
+            plt.plot(xi, yi, color=colors[color_index], alpha=0.7)
+
+        color_index = (color_index + 1) % len(colors)
+
 
     for p in valid_grid:
         plt.plot(p.x, p.y, 'o', ms=1, color='black')
 
     covers = solver.solve(valid_grid, full_polygon)
     res = set_cover(np.array(covers))
-    colors = ["red", "blue", "yellow", "orange"]
-    k = 0
     for i in range(len(res.x)):
         if res.x[i] == 1:
-            p = valid_grid[i]
-            plt.plot(p.x, p.y, 'o', ms=5, color='green')
-
             cover = covers[i]
             for j in range(len(cover)):
                 if cover[j] == 1:
                     p1 = valid_grid[j]
-                    plt.plot(p1.x, p1.y, "o", ms=2, color=colors[k])
-            k = k + 1 % len(colors)
+                    plt.plot(p1.x, p1.y, "o", ms=2, color=colors[color_index], alpha=0.7)
+
+            p = valid_grid[i]
+            plt.plot(p.x, p.y, 'o', ms=5, color='green')
+
+            color_index = (color_index + 1) % len(colors)
 
     plt.show()
 

@@ -1,6 +1,7 @@
 import numpy as np
 from shapely import LineString
 
+WALL_TOLERANCE = 0.05
 MAX_LOSS = 83
 
 class Wall:
@@ -56,7 +57,16 @@ def check_line_of_sight(start, end, polygon):
     if intersection.geom_type == 'Point':
         num_intersections = 1
     elif intersection.geom_type == 'MultiPoint':
-        num_intersections = len(list(set(list(intersection.geoms))))
+        intersection_points = list(set(list(intersection.geoms)))
+        num_intersections = len(intersection_points)
+
+        # Disregard duplicate intersections
+        for i in range(len(intersection_points)):
+            for j in range(i + 1, len(intersection_points)):
+                p0 = intersection_points[i]
+                p1 = intersection_points[j]
+                if distance(p0, p1) < WALL_TOLERANCE:
+                    num_intersections -= 1
     else:
         num_intersections = 0
 
