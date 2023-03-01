@@ -159,5 +159,10 @@ def main():
 
     plt.show()
 
+    Intensity = solver.intensity(res, valid_grid, full_polygon)
+    print(Intensity)
+    solver.plot_heatmap(Intensity, valid_grid)
+
+
 if __name__ == '__main__':
     main()

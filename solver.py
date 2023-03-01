@@ -1,5 +1,6 @@
 import numpy as np
 from shapely import LineString
+import matplotlib.pyplot as plt
 
 WALL_TOLERANCE = 0.05
 MAX_LOSS = 83
@@ -88,14 +89,25 @@ def pathLoss(d, walls = []):
     return 20 * np.log10(f) + N*np.log10(d) + P_f(walls) - 28
 
 
-def intensity(res, valid_grid, walls = []):
+def intensity(res, valid_grid, room_polygon):
     coverIntensity = np.zeros_like(res.x)
-    argz = np.where(res.x == 1)
+    args = np.argwhere(res.x)
     for routerIndex in args:
         for i, value in enumerate(res.x):
-            if(i not in argz):
-                d = distance(valid_grid[routerIndex], valid_grid[i])
-                strength = pathLoss(d, walls)
-                if(strength > coverIntensity[i] and coverIntensity[i] != 0):
-                    coverIntensity[i] = strength
+            d = distance(valid_grid[int(routerIndex)], valid_grid[i])
+            intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
+            strength = pathLoss(d, intersecting_walls)
+            if(strength < 0):
+                coverIntensity[i] = strength
     return coverIntensity
+
+def plot_heatmap(coverIntensity, valid_grid):
+    x = np.zeros_like(coverIntensity)
+    y = np.zeros_like(coverIntensity)
+    for i in range(len(coverIntensity)):
+        x[i] = valid_grid[i].x
+        y[i] = valid_grid[i].y
+    fig = plt.figure()
+    plt.hist2d(x, y, weights=coverIntensity)
+    plt.show()
+    return
