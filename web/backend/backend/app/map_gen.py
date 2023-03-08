@@ -254,5 +254,9 @@ def main():
             color_index = (color_index + 1) % len(colors)
     plt.show()
 
+    Intensity = solver.intensity(res, valid_grid, full_polygon)
+    solver.plot_heatmap(res, Intensity, valid_grid, full_polygon, 2.0)
+
+
 if __name__ == '__main__':
     main()
