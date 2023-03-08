@@ -19,5 +19,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('api/map/<str:poids>', views.fetch_map),
+    path('api/map', views.send_router_coverage_map),
 ]
