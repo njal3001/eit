@@ -239,8 +239,9 @@ def main():
 
     covers = solver.solve(valid_grid, full_polygon)
     res = set_cover(np.array(covers))
+    tol = 1e-5
     for i in range(len(res.x)):
-        if res.x[i] == 1:
+        if res.x[i]+tol >= 1:
             cover = covers[i]
             for j in range(len(cover)):
                 if cover[j] == 1:
@@ -251,7 +252,6 @@ def main():
             plt.plot(p.x, p.y, 'o', ms=5, color='green')
 
             color_index = (color_index + 1) % len(colors)
-
     plt.show()
 
 if __name__ == '__main__':
