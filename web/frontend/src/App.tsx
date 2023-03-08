@@ -9,6 +9,10 @@ function App() {
   const [URLs, setURLs] = useState<string[]>([]);
   const [map, setMap] = useState<JSX.Element>();
 
+  function emptyURLs() {
+    setURLs([]);
+  }
+
   function addURL(url: string) {
     setURLs((prevState: string[]) => {
       return [...prevState, url];
@@ -29,7 +33,7 @@ function App() {
         </MapContainer>
         <button className="api-button" onClick={getMap}>Beregn plasseringer</button>
       </div>
-      <UrlOverview URLs={URLs} />
+      <UrlOverview URLs={URLs} emptyURLs={emptyURLs} />
     </div>
   );
 }
