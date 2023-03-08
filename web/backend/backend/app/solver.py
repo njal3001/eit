@@ -7,7 +7,7 @@ import matplotlib.path as mpath
 
 
 
-WALL_TOLERANCE = 0.05
+WALL_TOLERANCE = 0.20
 MAX_LOSS = 83
 
 class Wall:
@@ -18,12 +18,16 @@ def solve(grid, room_polygon):
     MAX_RADIUS = calc_rad(MAX_LOSS)
     access_point_covers = []
 
+    pindex = 0
     for access_point_candidate in grid:
+        print(f'{pindex}/{len(grid) - 1}')
+        pindex += 1
+
         access_point_cover = np.zeros(len(grid)) # number of points
         for i in range(len(grid)):
             point = grid[i]
             d = distance(point, access_point_candidate)
-            
+
             if d > MAX_RADIUS:
                 continue
 
