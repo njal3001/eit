@@ -188,6 +188,8 @@ def draw_solution(urls):
 
             color_index = (color_index + 1) % len(colors)
 
+    return plt.gcf()
+
 
 def main():
     rooms = fetch_floor(67, -1)

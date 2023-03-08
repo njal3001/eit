@@ -19,6 +19,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('map/<str:poids>', views.RoutersAPI.as_view()),
-    path('api/image/<str:poids>', views.image_response),
+    path('api/map/<str:poids>', views.fetch_map),
 ]
