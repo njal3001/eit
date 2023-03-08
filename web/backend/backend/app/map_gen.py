@@ -4,6 +4,7 @@ import numpy as np
 from shapely import Point, Polygon, MultiPolygon
 import solver
 from optimization import set_cover
+import pickle
 
 U1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41588046866937&lng=10.405878134312957&z=-1&srid=4326'
 GROUP_ROOM1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.4157625337231&lng=10.40580125094317&z=-1&srid=4326'
@@ -194,6 +195,7 @@ def main():
 
     # urls = [U1_URL, GROUP_ROOM1_URL, GROUP_ROOM2_URL, GROUP_ROOM3_URL, GROUP_ROOM4_URL, GROUP_ROOM5_URL]
     # urls = [R23_URL]
+    # urls = [AU1_URL]
     # rooms = []
     # for url in urls:
     #     rooms.append(fetch_room(url))
@@ -238,6 +240,8 @@ def main():
         plt.plot(p.x, p.y, 'o', ms=1, color='black')
 
     covers = solver.solve(valid_grid, full_polygon)
+    # with open("file.txt", "w") as f:
+        # pickle.dump(covers, f)
     res = set_cover(np.array(covers))
     tol = 1e-5
     for i in range(len(res.x)):

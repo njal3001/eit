@@ -99,11 +99,16 @@ def pathLoss(d, walls = []):
 
 
 def intensity(res, valid_grid, room_polygon):
+    MAX_RADIUS = calc_rad(MAX_LOSS)
     coverIntensity = np.zeros_like(res.x)
     args = np.argwhere(res.x)
     for routerIndex in args:
         for i, value in enumerate(res.x):
             d = distance(valid_grid[int(routerIndex)], valid_grid[i])
+            
+            if d > MAX_RADIUS:
+                continue
+
             intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
             strength = -pathLoss(d, intersecting_walls)
             #print(strength)
@@ -139,9 +144,10 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     #print("Boundary: ", boundary)
 
     poly_verts = []
-    k, n = boundary.exterior.xy
-    for i in range(len(k)):
-        poly_verts.append((k[i], n[i]))
+    for geom in boundary.geoms:
+        k, n = geom.exterior.xy
+        for i in range(len(k)):
+            poly_verts.append((k[i], n[i]))
     #print(poly_verts)
 
     poly_codes = [mpath.Path.MOVETO] + (len(poly_verts) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
@@ -163,8 +169,9 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
 
     cont = plt.tricontourf(x, y, coverIntensity)
     plt.colorbar()
+    tol = 1e-5
     for i in range(len(res.x)):
-        if(res.x[i] == 1):
+        if(res.x[i]+tol >= 1):
             plt.plot(valid_grid[i].x, valid_grid[i].y, "rD")
 
     # add the patch to the axes
