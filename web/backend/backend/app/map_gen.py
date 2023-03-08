@@ -2,8 +2,8 @@ import requests
 import matplotlib.pyplot as plt
 import numpy as np
 from shapely import Point, Polygon, MultiPolygon
-from . import solver
-from .optimization import set_cover
+import solver
+from optimization import set_cover
 
 U1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41588046866937&lng=10.405878134312957&z=-1&srid=4326'
 GROUP_ROOM1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.4157625337231&lng=10.40580125094317&z=-1&srid=4326'
@@ -218,7 +218,7 @@ def main():
     if full_polygon.geom_type == 'Polygon':
         full_polygon = MultiPolygon([full_polygon])
 
-    grid = create_bounding_grid(all_points, 2.0)
+    grid = create_bounding_grid(all_points, 3.0)
     valid_grid = list(filter(full_polygon.contains, grid))
 
     colors = ["red", "blue", "yellow", "orange"]
@@ -239,8 +239,9 @@ def main():
 
     covers = solver.solve(valid_grid, full_polygon)
     res = set_cover(np.array(covers))
+    tol = 1e-5
     for i in range(len(res.x)):
-        if res.x[i] == 1:
+        if res.x[i]+tol >= 1:
             cover = covers[i]
             for j in range(len(cover)):
                 if cover[j] == 1:
@@ -251,8 +252,7 @@ def main():
             plt.plot(p.x, p.y, 'o', ms=5, color='green')
 
             color_index = (color_index + 1) % len(colors)
-
     plt.show()
 
-# if __name__ == '__main__':
-    # main()
+if __name__ == '__main__':
+    main()
