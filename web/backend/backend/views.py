@@ -3,6 +3,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import permissions
 
+from rest_framework.decorators import api_view, renderer_classes
+from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
+
 
 from django.http import HttpResponse
 
@@ -20,17 +23,18 @@ class RoutersAPI(APIView):
     http_method_names = ['get']
 
     def get(self, request, poids):
-        print(poids.split(","))
-        draw_solution(poids.split(","))
-        fig = plt.gcf()
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png')
-        buf.seek(0)
-        string = base64.b64encode(buf.read())
+        poids_list=poids.split(",")
+        # draw_solution(poids.split(","))
+        # fig = plt.gcf()
+        # buf = io.BytesIO()
+        # fig.savefig(buf, format='png')
+        # buf.seek(0)
+        # string = base64.b64encode(buf.read())
 
-        uri = 'data:image/png;base64,' + urllib.parse.quote(string)
+        # uri = 'data:image/png;base64,' + urllib.parse.quote(string)
 
-        args = {'image':uri}
+        # args = {'image':uri}
+        args = {'image':poids_list}
         return Response(args, status=status.HTTP_200_OK)
     
 
