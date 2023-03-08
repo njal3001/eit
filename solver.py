@@ -97,7 +97,8 @@ def intensity(res, valid_grid, room_polygon):
             d = distance(valid_grid[int(routerIndex)], valid_grid[i])
             intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
             strength = pathLoss(d, intersecting_walls)
-            if(strength < 0):
+            print(strength)
+            if(strength > 0):
                 coverIntensity[i] = strength
     return coverIntensity
 
