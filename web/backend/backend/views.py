@@ -19,8 +19,9 @@ class RoutersAPI(APIView):
     permission_classes = (permissions.AllowAny,)
     http_method_names = ['get']
 
-    def get(self, request, map_url):
-        draw_solution([URL])
+    def get(self, request, poids):
+        print(poids.split(","))
+        draw_solution(poids.split(","))
         fig = plt.gcf()
         buf = io.BytesIO()
         fig.savefig(buf, format='png')
@@ -33,8 +34,8 @@ class RoutersAPI(APIView):
         return Response(args, status=status.HTTP_200_OK)
     
 
-def image_response(request):
-    draw_solution([URL])
+def image_response(request, poids):
+    draw_solution(poids.split(","))
     fig = plt.gcf()
     buf = io.BytesIO()
     fig.savefig(buf, format='png')
