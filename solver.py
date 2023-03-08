@@ -1,6 +1,10 @@
 import numpy as np
 from shapely import LineString
+from shapely.geometry import CAP_STYLE, JOIN_STYLE
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.path as mpath
+
 
 WALL_TOLERANCE = 0.05
 MAX_LOSS = 83
@@ -96,19 +100,67 @@ def intensity(res, valid_grid, room_polygon):
         for i, value in enumerate(res.x):
             d = distance(valid_grid[int(routerIndex)], valid_grid[i])
             intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
-            strength = pathLoss(d, intersecting_walls)
-            print(strength)
-            if(strength > 0):
+            strength = -pathLoss(d, intersecting_walls)
+            #print(strength)
+            if(coverIntensity[i] == 0):
                 coverIntensity[i] = strength
+            if(strength > coverIntensity[i]):
+                coverIntensity[i] = strength
+    
+    maxVal = -np.inf
+    for i in range(len(coverIntensity)):
+        if(coverIntensity[i] < 0 and coverIntensity[i] > maxVal):
+            maxVal = coverIntensity[i]
+
+    for i in range(len(coverIntensity)):
+        if(coverIntensity[i] > 0):
+            coverIntensity[i] = maxVal
+    print("Cover intensity: ", coverIntensity)
     return coverIntensity
 
-def plot_heatmap(coverIntensity, valid_grid):
+def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     x = np.zeros_like(coverIntensity)
     y = np.zeros_like(coverIntensity)
     for i in range(len(coverIntensity)):
         x[i] = valid_grid[i].x
         y[i] = valid_grid[i].y
-    fig = plt.figure()
-    plt.hist2d(x, y, weights=coverIntensity)
+    #fig = plt.figure()
+    #plt.hist2d(x, y, weights=coverIntensity)
+    #plt.show()
+
+    #interval = 100    
+    kwargs = {"cap_style": CAP_STYLE.square, "join_style": JOIN_STYLE.mitre}
+    boundary = room_polygon.buffer(interval/2, **kwargs).buffer(-interval/2, **kwargs)
+    print("Boundary: ", boundary)
+
+    poly_verts = []
+    k, n = boundary.exterior.xy
+    for i in range(len(k)):
+        poly_verts.append((k[i], n[i]))
+    print(poly_verts)
+
+    poly_codes = [mpath.Path.MOVETO] + (len(poly_verts) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
+    
+    # create a Path from the polygon vertices
+    path = mpath.Path(poly_verts, poly_codes)
+
+    # create a Patch from the path
+    patch = mpatches.PathPatch(path, facecolor='none', edgecolor='k')
+
+
+
+    plt.figure()
+    ax = plt.gca()
+    cont = plt.tricontourf(x, y, coverIntensity)
+    plt.colorbar()
+    for i in range(len(res.x)):
+        if(res.x[i] == 1):
+            plt.plot(valid_grid[i].x, valid_grid[i].y, "rD")
+
+    # add the patch to the axes
+    ax.add_patch(patch)  ## TRY COMMENTING THIS OUT
+    for col in cont.collections:
+        col.set_clip_path(patch)
+
     plt.show()
     return
