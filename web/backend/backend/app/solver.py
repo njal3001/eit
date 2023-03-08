@@ -1,7 +1,7 @@
 import numpy as np
 from shapely import LineString
 
-WALL_TOLERANCE = 0.05
+WALL_TOLERANCE = 0.20
 MAX_LOSS = 83
 
 class Wall:
@@ -12,12 +12,16 @@ def solve(grid, room_polygon):
     MAX_RADIUS = calc_rad(MAX_LOSS)
     access_point_covers = []
 
+    pindex = 0
     for access_point_candidate in grid:
+        print(f'{pindex}/{len(grid) - 1}')
+        pindex += 1
+
         access_point_cover = np.zeros(len(grid)) # number of points
         for i in range(len(grid)):
             point = grid[i]
             d = distance(point, access_point_candidate)
-            
+
             if d > MAX_RADIUS:
                 continue
 
@@ -79,3 +83,23 @@ def distance(p0, p1):
     dx = np.abs(p0.x - p1.x)
     dy = np.abs(p0.y - p1.y)
     return np.sqrt(dx**2 + dy**2)
+
+
+def pathLoss(d, walls = []):
+    f = 5.2e3
+    N = 31
+    P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
+    return 20 * np.log10(f) + N*np.log10(d) + P_f(walls) - 28
+
+
+def intensity(res, valid_grid, walls = []):
+    coverIntensity = np.zeros_like(res.x)
+    argz = np.where(res.x == 1)
+    for routerIndex in args:
+        for i, value in enumerate(res.x):
+            if(i not in argz):
+                d = distance(valid_grid[routerIndex], valid_grid[i])
+                strength = pathLoss(d, walls)
+                if(strength > coverIntensity[i] and coverIntensity[i] != 0):
+                    coverIntensity[i] = strength
+    return coverIntensity
