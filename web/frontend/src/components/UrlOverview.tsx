@@ -2,10 +2,11 @@ import "./UrlOverview.css";
 
 interface UrlOverviewProps {
   URLs: string[];
+  emptyURLs: () => void;
 }
 
 function UrlOverview(props: UrlOverviewProps) {
-  const { URLs } = props;
+  const { URLs, emptyURLs } = props;
 
   function renderURLs() {
     return URLs.map((url) => {
@@ -24,6 +25,7 @@ function UrlOverview(props: UrlOverviewProps) {
     <div>
       {renderURLs() ?? <p>hallo</p>}
     </div>
+    <button className="api-button" onClick={emptyURLs}>Tøm URLer</button>
   </div>;
 }
 
