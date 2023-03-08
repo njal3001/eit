@@ -160,7 +160,6 @@ def main():
     plt.show()
 
     Intensity = solver.intensity(res, valid_grid, full_polygon)
-    print(Intensity)
     solver.plot_heatmap(res, Intensity, valid_grid, full_polygon, 2.0)
 
 

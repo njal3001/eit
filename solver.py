@@ -6,6 +6,7 @@ import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 
 
+
 WALL_TOLERANCE = 0.05
 MAX_LOSS = 83
 
@@ -115,7 +116,7 @@ def intensity(res, valid_grid, room_polygon):
     for i in range(len(coverIntensity)):
         if(coverIntensity[i] > 0):
             coverIntensity[i] = maxVal
-    print("Cover intensity: ", coverIntensity)
+    #print("Cover intensity: ", coverIntensity)
     return coverIntensity
 
 def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
@@ -131,13 +132,13 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     #interval = 100    
     kwargs = {"cap_style": CAP_STYLE.square, "join_style": JOIN_STYLE.mitre}
     boundary = room_polygon.buffer(interval/2, **kwargs).buffer(-interval/2, **kwargs)
-    print("Boundary: ", boundary)
+    #print("Boundary: ", boundary)
 
     poly_verts = []
     k, n = boundary.exterior.xy
     for i in range(len(k)):
         poly_verts.append((k[i], n[i]))
-    print(poly_verts)
+    #print(poly_verts)
 
     poly_codes = [mpath.Path.MOVETO] + (len(poly_verts) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
     
@@ -146,11 +147,16 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
 
     # create a Patch from the path
     patch = mpatches.PathPatch(path, facecolor='none', edgecolor='k')
+    background_color = mpatches.PathPatch(path, facecolor='#440154')
 
 
 
     plt.figure()
     ax = plt.gca()
+    ax.add_patch(background_color)
+    #coloer_patch = mpatches.Patch(boundary, facecolor="blue")
+    #ax.add_patch(coloer_patch)
+
     cont = plt.tricontourf(x, y, coverIntensity)
     plt.colorbar()
     for i in range(len(res.x)):
@@ -161,6 +167,10 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     ax.add_patch(patch)  ## TRY COMMENTING THIS OUT
     for col in cont.collections:
         col.set_clip_path(patch)
+
+    for geom in room_polygon.geoms:
+        xe, ye = geom.exterior.xy
+        plt.plot(xe, ye, color="red", alpha=0.7)
 
     plt.show()
     return
