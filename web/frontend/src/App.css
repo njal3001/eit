@@ -34,3 +34,7 @@ html {
   background-color: tomato;
   cursor: pointer;
 }
+
+.map-img {
+  max-width: 500px;
+}

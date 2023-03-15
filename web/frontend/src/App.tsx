@@ -28,7 +28,7 @@ function App() {
     <div className="App">
       <div className="container">
         <SearchField addURL={addURL} />
-        <MapContainer>
+        <MapContainer active={map !== undefined}>
           {map}
         </MapContainer>
         <button className="api-button" onClick={getMap}>Beregn plasseringer</button>

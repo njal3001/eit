@@ -6,6 +6,6 @@ export async function getRouterMap(urls: string[]): Promise<JSX.Element> {
   const src = URL.createObjectURL(blob);
 
   return <div>
-    <img src={src} alt="map" />
+    <img src={src} alt="map" className="map-img" />
   </div>
 }
