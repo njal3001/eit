@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import './App.css';
 
 type LongLat = {
@@ -42,13 +42,8 @@ type MapHighlighter = {
 };
 
 function App() {
-  const [pois, setPois] = useState<MarkedPoi[]>([]);
   const mapRef = useRef<Map>();
   const poisRef = useRef<MarkedPoi[]>([]);
-
-  // Need to use a ref because mazemap object can't access
-  // useState variables directly
-  poisRef.current = pois;
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -61,7 +56,7 @@ function App() {
     }
   }, []);
 
-  function initializeMap() {
+  const initializeMap = () => {
     if (mapRef.current) return;
 
     mapRef.current = new window.Mazemap.Map({container: 'mazemap-container'}) as Map;
@@ -69,13 +64,6 @@ function App() {
       if (!mapRef.current) return;
 
       mapRef.current.on('click', onMapClick);
-      mapRef.current.highlighter = new window.Mazemap.Highlighter(mapRef.current, {
-          showOutline: true,
-          showFill: true,
-          outlineColor: window.Mazemap.Util.Colors.MazeColors.MazeBlue,
-          fillColor: window.Mazemap.Util.Colors.MazeColors.MazeBlue
-      });
-
       mapRef.current.jumpTo({
         center: { lat: 63.41732271104283, lng: 10.404263674366945 },
         zoom: 15.5,
@@ -83,7 +71,7 @@ function App() {
     })
   }
 
-  function onMapClick(e: any) {
+  const onMapClick = (e: any) => {
     if (!mapRef.current) return;
 
     const lngLat: LongLat = e.lngLat;
@@ -91,7 +79,7 @@ function App() {
     if (!isNaN(zLevel)) {
       window.Mazemap.Data.getPoiAt(lngLat, zLevel).then((poi: Poi) => {
         const id = poi.properties.id;
-        if (poisRef.current.some((poi) => poi.poi.properties.id === id)) {
+        if (poisRef.current.some(({ poi }) => poi.properties.id === id)) {
           removePoid(id);
         } else {
           addPoi(poi);
@@ -100,28 +88,26 @@ function App() {
     }
   }
 
-  function addPoi(poi: Poi) {
+  const addPoi = (poi: Poi) => {
     if (!mapRef.current) return;
 
     const lngLat = window.Mazemap.Util.getPoiLngLat(poi);
-    var marker: MapMarker = new window.Mazemap.MazeMarker( {
+    const marker: MapMarker = new window.Mazemap.MazeMarker( {
         zLevel: mapRef.current.zLevel,
     });
     marker.setLngLat(lngLat);
     marker.addTo(mapRef.current);
 
-    setPois((prevState) => {
-      return [...prevState, { poi: poi, marker: marker }];
-    });
+    poisRef.current.push({ poi: poi, marker: marker });
   }
 
-  function removePoid(poid: number) {
-    var poiToBeRemoved = poisRef.current.find((poi) => poi.poi.properties.id === poid);
-    if (poiToBeRemoved) {
-      poiToBeRemoved.marker.remove();
-      setPois((prevState) => {
-        return prevState.filter((poi) => poi.poi.properties.id !== poid);
-      });
+  const removePoid = (poid: number) => {
+    const poiToRemove = poisRef.current.find((poi) => poi.poi.properties.id === poid);
+    if (poiToRemove) {
+      poiToRemove.marker.remove();
+      poisRef.current = poisRef.current.filter((poi) => poi !== poiToRemove);
+    } else {
+      console.warn(`Tried to remove poi with id ${poid} but could not find it.`);
     }
   }
 
