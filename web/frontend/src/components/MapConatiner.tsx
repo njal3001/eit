@@ -1,8 +1,12 @@
 import "./MapContainer.css";
 
-function MapContainer(props: React.PropsWithChildren) {
-  const { children } = props;
-  return <div className="container map-container">
+interface MapConatinerInterface {
+  active: boolean;
+}
+
+function MapContainer(props: React.PropsWithChildren<MapConatinerInterface>) {
+  const { active, children } = props;
+  return <div className={`container map-container ${active ? "active" : ""}`}>
     {children}
   </div>;
 }

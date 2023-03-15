@@ -2,6 +2,8 @@
   height: 100%;
   width: 100%;
   padding: 2rem;
+  display: flex;
+  justify-content: space-evenly;
 }
 
 .container {
@@ -20,6 +22,10 @@ html {
   overflow-x: hidden;
 }
 
+canvas {
+  border-radius: 5px;
+}
+
 .urloverview-container {
   position: absolute;
   top: 2.5rem;
@@ -33,4 +39,8 @@ html {
   border: none;
   background-color: tomato;
   cursor: pointer;
+}
+
+.map-img {
+  max-width: 500px;
 }

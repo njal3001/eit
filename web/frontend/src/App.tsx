@@ -122,13 +122,19 @@ function App() {
 
   return (
     <div className="App">
-      <div id='mazemap-container' style={{width: '500px', height: '500px'}} />
-      <div className="container">
-        <MapContainer>
-          <img src={mapSrc} />
-        </MapContainer>
-        <button className="api-button" onClick={getMap}>Beregn plasseringer</button>
-      </div>
+      <section className="mazemap-section">
+        <h3 style={{ color: "#fff", maxWidth: "500px", minHeight: "3rem" }}>01. Velg rom du ønsker å beregne for</h3>
+        <div id='mazemap-container' style={{width: '500px', height: '500px'}} />
+      </section>
+      <section>
+        <h3 style={{ color: "#fff", maxWidth: "500px", minHeight: "3rem" }}>02. Beregning {(mapSrc === undefined || mapSrc === "") && "(velg rom for plassering og klikk 'Beregn plasseringer')"}</h3>
+        <div className="container">
+          <MapContainer active={mapSrc !== "" && mapSrc !== undefined}>
+            <img src={mapSrc} className="map-img" />
+          </MapContainer>
+          <button className="api-button" onClick={getMap}>Beregn plasseringer</button>
+        </div>
+      </section>
     </div>
   );
 }
