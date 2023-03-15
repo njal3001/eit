@@ -172,7 +172,7 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     tol = 1e-5
     for i in range(len(res.x)):
         if(res.x[i]+tol >= 1):
-            plt.plot(valid_grid[i].x, valid_grid[i].y, "rD")
+            plt.plot(valid_grid[i].x, valid_grid[i].y, "iO")
 
     # add the patch to the axes
     ax.add_patch(patch)  ## TRY COMMENTING THIS OUT
