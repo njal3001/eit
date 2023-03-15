@@ -1,12 +1,3 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import permissions
-
-from rest_framework.decorators import api_view, renderer_classes
-from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
-
-
 from django.http import HttpResponse
 
 import matplotlib.pyplot as plt
@@ -14,6 +5,12 @@ import io
 
 from .app.map_gen import get_router_coverage_map
 import urllib, base64
+
+CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+}
 
 def send_router_coverage_map(request):
     poids_str = request.GET.getlist('poid')
@@ -25,4 +22,6 @@ def send_router_coverage_map(request):
     fig.savefig(buf, format='png')
     buf.seek(0)
 
-    return HttpResponse(content=buf, content_type="image/png", status=200)
+    res = HttpResponse(content=buf, content_type="image/png", status=200, headers=CORS_HEADERS)
+
+    return res
