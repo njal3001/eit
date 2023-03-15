@@ -1,0 +1,46 @@
+.App {
+  height: 100%;
+  width: 100%;
+  padding: 2rem;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+body {
+  background-color: black;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+canvas {
+  border-radius: 5px;
+}
+
+.urloverview-container {
+  position: absolute;
+  top: 2.5rem;
+  right: 20px;
+}
+
+.api-button {
+  width: 200px;
+  height: 2.5rem;
+  margin: 1rem;
+  border: none;
+  background-color: tomato;
+  cursor: pointer;
+}
+
+.map-img {
+  max-width: 500px;
+}

@@ -2,8 +2,8 @@ import requests
 import matplotlib.pyplot as plt
 import numpy as np
 from shapely import Point, Polygon, MultiPolygon
-import solver
-from optimization import set_cover
+from . import solver
+from .optimization import set_cover
 import pickle
 
 U1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41588046866937&lng=10.405878134312957&z=-1&srid=4326'
@@ -28,6 +28,48 @@ class Room:
 
 def degree_to_rad(d):
     return np.pi * d / 180.0
+
+def parse_room(rjson):
+    coord_map = lambda c: Coordinate(c[0], c[1])
+
+    jcoords = rjson['geometry']['coordinates']
+    jorigin = rjson['point']['coordinates']
+
+    coords = list(map(coord_map, jcoords[0]))
+
+    holes = []
+    for i in range(1, len(jcoords)):
+        holes.append(list(map(coord_map, jcoords[i])))
+
+    origin = Coordinate(jorigin[0], jorigin[1])
+
+    return Room(origin, coords, holes)
+
+def fetch_room_from_url(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        rjson = response.json()
+        return parse_room(rjson)
+
+    return None
+
+def fetch_room(poid):
+    url = f'https://api.mazemap.com/api/pois/{poid}?srid=4326'
+    response = requests.get(url)
+    if response.status_code == 200:
+        rjson = response.json()
+        return parse_room(rjson)
+
+    return None
+
+def fetch_rooms(poids):
+    rooms = []
+    for poid in poids:
+        room = fetch_room(poid)
+        if room:
+            rooms.append(room)
+
+    return rooms
 
 def fetch_floor(building_id, z):
     from_id = 0
@@ -57,29 +99,6 @@ def fetch_floor(building_id, z):
 
     return rooms
 
-def parse_room(rjson):
-    coord_map = lambda c: Coordinate(c[0], c[1])
-
-    jcoords = rjson['geometry']['coordinates']
-    jorigin = rjson['point']['coordinates']
-
-    coords = list(map(coord_map, jcoords[0]))
-
-    holes = []
-    for i in range(1, len(jcoords)):
-        holes.append(list(map(coord_map, jcoords[i])))
-
-    origin = Coordinate(jorigin[0], jorigin[1])
-
-    return Room(origin, coords, holes)
-
-def fetch_room(url):
-    response = requests.get(url)
-    if response.status_code == 200:
-        rjson = response.json()
-        return parse_room(rjson)
-
-    return Room(None, [], [])
 
 def coordinate_difference(start, end):
     METERS_PER_LATITUDE = 110574.0
@@ -127,78 +146,9 @@ def create_bounding_grid(points, resolution):
 
     return create_rectangular_grid(min_p, max_p, resolution)
 
-
-def draw_solution(urls):
-    rooms = []
-    for url in urls:
-        rooms.append(fetch_room(url))
-
-    coordinate_origin = rooms[0].origin
-    all_points = []
-    polygons = []
-    for r in rooms:
-        points = coordinates_to_origin_points(coordinate_origin, r.coordinates)
-        hole_points = []
-        for h in r.holes:
-            hole_points.append(coordinates_to_origin_points(coordinate_origin, h))
-
-        all_points += points
-
-        # Add a buffer around Polygon to reduce distance between duplicate walls
-        polygons.append(Polygon(points, holes=hole_points).buffer(solver.WALL_TOLERANCE))
-
-    # Merge rooms into single MultiPolygon
-    full_polygon = polygons[0]
-    for p in polygons[1:]:
-        full_polygon = full_polygon.union(p)
-
-    if full_polygon.geom_type == 'Polygon':
-        full_polygon = MultiPolygon([full_polygon])
-
-    grid = create_bounding_grid(all_points, 2.0)
-    valid_grid = list(filter(full_polygon.contains, grid))
-
-    colors = ["red", "blue", "yellow", "orange"]
-    color_index = 0
-    for geom in full_polygon.geoms:
-        xe, ye = geom.exterior.xy
-        plt.plot(xe, ye, color=colors[color_index], alpha=0.7)
-
-        for interior in geom.interiors:
-            xi, yi = zip(*interior.coords[:])
-            plt.plot(xi, yi, color=colors[color_index], alpha=0.7)
-
-        color_index = (color_index + 1) % len(colors)
-
-
-    for p in valid_grid:
-        plt.plot(p.x, p.y, 'o', ms=1, color='black')
-
-    covers = solver.solve(valid_grid, full_polygon)
-    res = set_cover(np.array(covers))
-    for i in range(len(res.x)):
-        if res.x[i] == 1:
-            cover = covers[i]
-            for j in range(len(cover)):
-                if cover[j] == 1:
-                    p1 = valid_grid[j]
-                    plt.plot(p1.x, p1.y, "o", ms=2, color=colors[color_index], alpha=0.7)
-
-            p = valid_grid[i]
-            plt.plot(p.x, p.y, 'o', ms=5, color='green')
-
-            color_index = (color_index + 1) % len(colors)
-
-
-def main():
-    rooms = fetch_floor(67, -1)
-
-    # urls = [U1_URL, GROUP_ROOM1_URL, GROUP_ROOM2_URL, GROUP_ROOM3_URL, GROUP_ROOM4_URL, GROUP_ROOM5_URL]
-    # urls = [R23_URL]
-    # urls = [AU1_URL]
-    # rooms = []
-    # for url in urls:
-    #     rooms.append(fetch_room(url))
+def get_router_coverage_map(poids):
+    plt.clf()
+    rooms = fetch_rooms(poids)
 
     coordinate_origin = rooms[0].origin
     all_points = []
@@ -240,8 +190,6 @@ def main():
         plt.plot(p.x, p.y, 'o', ms=1, color='black')
 
     covers = solver.solve(valid_grid, full_polygon)
-    # with open("file.txt", "w") as f:
-        # pickle.dump(covers, f)
     res = set_cover(np.array(covers))
     tol = 1e-5
     for i in range(len(res.x)):
@@ -256,11 +204,5 @@ def main():
             plt.plot(p.x, p.y, 'o', ms=5, color='green')
 
             color_index = (color_index + 1) % len(colors)
-    plt.show()
 
-    Intensity = solver.intensity(res, valid_grid, full_polygon)
-    solver.plot_heatmap(res, Intensity, valid_grid, full_polygon, 2.0)
-
-
-if __name__ == '__main__':
-    main()
+    return plt.gcf()
