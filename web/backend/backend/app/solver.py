@@ -102,16 +102,22 @@ def intensity(res, valid_grid, room_polygon):
 
 
     MAX_RADIUS = calc_rad(MAX_LOSS)
-    coverIntensity = np.zeros_like(res.x)
+    coverIntensity = np.zeros_like(valid_grid)
+    #coverIntensity = np.zeros_like(res.x)
+    len_res_x = len(res.x)
     args = np.argwhere(res.x)
     for routerIndex in args:
-        for i, value in enumerate(res.x):
+        for i, value in enumerate(valid_grid):
+        #for i, value in enumerate(res.x):
             d = distance(valid_grid[int(routerIndex)], valid_grid[i])
 
             if d > MAX_RADIUS:
                 continue
-
-            intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
+            
+            if(i <= len_res_x):
+                intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
+            if(i > len_res_x):
+                intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)[:-1]
             strength = -pathLoss(d, intersecting_walls)
             #print(strength)
             if(coverIntensity[i] == 0):
@@ -124,10 +130,17 @@ def intensity(res, valid_grid, room_polygon):
         if(coverIntensity[i] < 0 and coverIntensity[i] > maxVal):
             maxVal = coverIntensity[i]
 
+    minVal = np.inf
+    for i in range(len(coverIntensity)):
+        if(coverIntensity[i] < minVal):
+            minVal = coverIntensity[i]
+
     for i in range(len(coverIntensity)):
         if(coverIntensity[i] > 0):
             coverIntensity[i] = maxVal
-    #print("Cover intensity: ", coverIntensity)
+        if(coverIntensity[i] == 0):
+            coverIntensity[i] = minVal
+    print("Cover intensity: ", coverIntensity)
     return coverIntensity
 
 def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, all_holes, interval = 2.0):
@@ -150,6 +163,10 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, all_holes, inter
 
     print(boundary.geom_type)
     #print("Boundary: ", boundary)
+
+    """
+    
+    """
 
     poly_verts = []
     for geom in boundary.geoms:
@@ -174,8 +191,12 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, all_holes, inter
     ax.add_patch(background_color)
     #coloer_patch = mpatches.Patch(boundary, facecolor="blue")
     #ax.add_patch(coloer_patch)
+    
+    print(len(x))
+    print(len(y))
+    print(len(coverIntensity))
 
-    cont = plt.tricontourf(x, y, coverIntensity)
+    cont = plt.tricontourf(np.array(x, dtype="float64"), np.array(y, dtype="float64"), np.array(coverIntensity, dtype="float64"))
     plt.colorbar()
     tol = 1e-5
     for i in range(len(res.x)):
@@ -184,6 +205,8 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, all_holes, inter
 
     # add the patch to the axes
     ax.add_patch(patch)  ## TRY COMMENTING THIS OUT
+
+
     for col in cont.collections:
         col.set_clip_path(patch)
 

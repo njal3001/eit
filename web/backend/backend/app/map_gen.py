@@ -179,7 +179,19 @@ def get_router_coverage_map(poids):
     covers = solver.solve(valid_grid, full_polygon)
     res = set_cover(np.array(covers))
 
-    Intensity = solver.intensity(res, valid_grid, full_polygon)
-    solver.plot_heatmap(res, Intensity, valid_grid, full_polygon, all_holes, 2.0)
+    list_of_points_on_boundary = []
+    for poly in full_polygon.geoms:
+        list_of_points_on_boundary.append((poly.exterior.coords[:-1]))
+    for i in list_of_points_on_boundary:
+        for j in range(len(i) - 1):
+
+            point_a = [i[j][0], i[j][1]]
+            point_b = [i[j+1][0], i[j+1][1]]
+            my_points_with_space = solver.getEquidistantPoints(point_a, point_b, 40)
+            for k in my_points_with_space:
+                valid_grid.append(Point(k[0], k[1]))
+
+    intensity = solver.intensity(res, valid_grid, full_polygon)
+    solver.plot_heatmap(res, intensity, valid_grid, full_polygon, all_holes, 2.0)
 
     return plt.gcf()
