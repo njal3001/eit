@@ -1,4 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from 'react';
+import MapContainer from './components/MapConatiner'
+import { getRouterMap } from './utils/api';
 import './App.css';
 
 type LongLat = {
@@ -44,6 +46,8 @@ type MapHighlighter = {
 function App() {
   const mapRef = useRef<Map>();
   const poisRef = useRef<MarkedPoi[]>([]);
+
+  const [mapSrc, setMapSrc] = useState<string>('');
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -111,9 +115,20 @@ function App() {
     }
   }
 
+  async function getMap() {
+    const src = await getRouterMap(poisRef.current.map(({ poi }) => poi.properties.id));
+    setMapSrc(src);
+  }
+
   return (
     <div className="App">
       <div id='mazemap-container' style={{width: '500px', height: '500px'}} />
+      <div className="container">
+        <MapContainer>
+          <img src={mapSrc} />
+        </MapContainer>
+        <button className="api-button" onClick={getMap}>Beregn plasseringer</button>
+      </div>
     </div>
   );
 }
