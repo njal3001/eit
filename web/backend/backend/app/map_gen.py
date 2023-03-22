@@ -1,20 +1,11 @@
 import requests
-import matplotlib.pyplot as plt
 import numpy as np
 from shapely import Point, Polygon, MultiPolygon
 from . import solver
 from .optimization import set_cover
 import pickle
 
-U1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41588046866937&lng=10.405878134312957&z=-1&srid=4326'
-GROUP_ROOM1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.4157625337231&lng=10.40580125094317&z=-1&srid=4326'
-GROUP_ROOM2_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415778169738985&lng=10.405763737058976&z=-1&srid=4326'
-GROUP_ROOM3_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41578525812142&lng=10.405826002710683&z=-1&srid=4326'
-GROUP_ROOM4_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41574359678859&lng=10.405863387703988&z=-1&srid=4326'
-GROUP_ROOM5_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41571780230302&lng=10.40588816732702&z=-1&srid=4326'
-AU1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415572384234764&lng=10.404863704147175&z=-1&srid=4326'
-R23_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415725767409924&lng=10.405624136872206&z=-2&srid=4326'
-AU1_100 = "https://api.mazemap.com/api/pois/closestpoi/?lat=63.41556329578796&lng=10.404975418089634&z=-1&srid=4326"
+GRID_RESOLUTION = 2.0
 
 class Coordinate:
     def __init__(self, longtitude, latitude):
@@ -148,50 +139,49 @@ def create_bounding_grid(points, resolution):
     return create_rectangular_grid(min_p, max_p, resolution)
 
 def get_router_coverage_map(poids):
-    plt.clf()
     rooms = fetch_rooms(poids)
 
     coordinate_origin = rooms[0].origin
     all_points = []
-    polygons = []
+    room_polygons = []
     all_holes = []
     for r in rooms:
         points = coordinates_to_origin_points(coordinate_origin, r.coordinates)
         hole_points = []
         for h in r.holes:
-            hole_points.append(coordinates_to_origin_points(coordinate_origin, h))
+            hole_point = coordinates_to_origin_points(coordinate_origin, h)
+            hole_points.append(hole_point)
+            all_holes.append(hole_point)
 
         all_points += points
-        polygons.append(Polygon(points, holes=hole_points))
-        all_holes.append(hole_points)
+        room_polygons.append(Polygon(points, holes=hole_points))
 
     # Merge rooms into single MultiPolygon
-    full_polygon = polygons[0]
-    for p in polygons[1:]:
-        full_polygon = full_polygon.union(p)
+    map_polygon = room_polygons[0]
+    for p in room_polygons[1:]:
+        map_polygon = map_polygon.union(p)
 
-    if full_polygon.geom_type == 'Polygon':
-        full_polygon = MultiPolygon([full_polygon])
+    if map_polygon.geom_type == 'Polygon':
+        map_polygon = MultiPolygon([map_polygon])
 
-    grid = create_bounding_grid(all_points, 3.0)
-    valid_grid = list(filter(full_polygon.contains, grid))
+    grid = create_bounding_grid(all_points, GRID_RESOLUTION)
+    router_positions = list(filter(map_polygon.contains, grid))
 
-    covers = solver.solve(valid_grid, full_polygon)
-    res = set_cover(np.array(covers))
+    covers = solver.solve(router_positions, map_polygon)
+    router_coverages = set_cover(np.array(covers))
 
     list_of_points_on_boundary = []
-    for poly in full_polygon.geoms:
+    for poly in map_polygon.geoms:
         list_of_points_on_boundary.append((poly.exterior.coords[:-1]))
     for i in list_of_points_on_boundary:
         for j in range(len(i) - 1):
-
             point_a = [i[j][0], i[j][1]]
             point_b = [i[j+1][0], i[j+1][1]]
-            my_points_with_space = solver.getEquidistantPoints(point_a, point_b, 40)
+            my_points_with_space = solver.get_equidistant_points(point_a, point_b, 4)
             for k in my_points_with_space:
-                valid_grid.append(Point(k[0], k[1]))
+                router_positions.append(Point(k[0], k[1]))
 
-    intensity = solver.intensity(res, valid_grid, full_polygon)
-    solver.plot_heatmap(res, intensity, valid_grid, full_polygon, all_holes, 2.0)
+    intensity = solver.intensity(router_coverages, router_positions, map_polygon)
+    image = solver.create_intensity_map(router_coverages, intensity, router_positions, map_polygon, all_holes, GRID_RESOLUTION)
 
-    return plt.gcf()
+    return image
