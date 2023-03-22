@@ -1,11 +1,13 @@
 import numpy as np
 from shapely import LineString, MultiPolygon
 from shapely.geometry import CAP_STYLE, JOIN_STYLE
+
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
-
-
 
 WALL_TOLERANCE = 0.20
 MAX_LOSS = 83
@@ -14,25 +16,25 @@ class Wall:
     WOOD = 1
     CONCRETE = 2
 
-def solve(grid, room_polygon):
-    MAX_RADIUS = calc_rad(MAX_LOSS)
+def solve(router_positions, map_polygon):
+    MAX_RADIUS = router_radius(MAX_LOSS)
     access_point_covers = []
 
     pindex = 0
-    for access_point_candidate in grid:
-        print(f'{pindex}/{len(grid) - 1}')
+    for access_point_candidate in router_positions:
+        print(f'{pindex}/{len(router_positions) - 1}')
         pindex += 1
 
-        access_point_cover = np.zeros(len(grid)) # number of points
-        for i in range(len(grid)):
-            point = grid[i]
+        access_point_cover = np.zeros(len(router_positions)) # number of points
+        for i in range(len(router_positions)):
+            point = router_positions[i]
             d = distance(point, access_point_candidate)
 
             if d > MAX_RADIUS:
                 continue
 
-            intersecting_walls = check_line_of_sight(point, access_point_candidate, room_polygon)
-            radius = calc_rad(MAX_LOSS, intersecting_walls)
+            intersecting_walls = check_line_of_sight(point, access_point_candidate, map_polygon)
+            radius = router_radius(MAX_LOSS, intersecting_walls)
 
             if d <= radius:
                 access_point_cover[i] = 1
@@ -41,8 +43,7 @@ def solve(grid, room_polygon):
 
     return access_point_covers
 
-
-def calc_rad(max_loss, walls = []):
+def router_radius(max_loss, walls = []):
     """
     walls: Wall[]
     """
@@ -90,144 +91,107 @@ def distance(p0, p1):
     dy = np.abs(p0.y - p1.y)
     return np.sqrt(dx**2 + dy**2)
 
-
-def pathLoss(d, walls = []):
+def path_loss(d, walls = []):
     f = 5.2e3
     N = 31
     P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
-    return 20 * np.log10(f) + N*np.log10(d) + P_f(walls) - 28
+    return 20 * np.log10(f) + N * np.log10(d) + P_f(walls) - 28
 
+def intensity(router_coverages, router_positions, map_polygon):
+    MAX_RADIUS = router_radius(MAX_LOSS)
 
-def intensity(res, valid_grid, room_polygon):
+    result = np.ones_like(router_positions) * (-np.inf)
+    point_count = len(router_coverages.x)
 
+    router_indices = np.nonzero(router_coverages.x)[0]
+    for router_index in router_indices:
+        for i in range(len(router_positions)):
+            d = distance(router_positions[router_index], router_positions[i])
 
-    MAX_RADIUS = calc_rad(MAX_LOSS)
-    coverIntensity = np.zeros_like(valid_grid)
-    #coverIntensity = np.zeros_like(res.x)
-    len_res_x = len(res.x)
-    args = np.argwhere(res.x)
-    for routerIndex in args:
-        for i, value in enumerate(valid_grid):
-        #for i, value in enumerate(res.x):
-            d = distance(valid_grid[int(routerIndex)], valid_grid[i])
-
-            if d > MAX_RADIUS:
+            if router_index == i:
+                result[i] = 0.0
                 continue
-            
-            if(i <= len_res_x):
-                intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
-            if(i > len_res_x):
-                intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)[:-1]
-            strength = -pathLoss(d, intersecting_walls)
-            #print(strength)
-            if(coverIntensity[i] == 0):
-                coverIntensity[i] = strength
-            if(strength > coverIntensity[i]):
-                coverIntensity[i] = strength
 
-    maxVal = -np.inf
-    for i in range(len(coverIntensity)):
-        if(coverIntensity[i] < 0 and coverIntensity[i] > maxVal):
-            maxVal = coverIntensity[i]
+            if d > MAX_RADIUS and i < point_count:
+                continue
 
-    minVal = np.inf
-    for i in range(len(coverIntensity)):
-        if(coverIntensity[i] < minVal):
-            minVal = coverIntensity[i]
+            if(i < point_count):
+                intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
+            if(i >= point_count):
+                intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
 
-    for i in range(len(coverIntensity)):
-        if(coverIntensity[i] > 0):
-            coverIntensity[i] = maxVal
-        if(coverIntensity[i] == 0):
-            coverIntensity[i] = minVal
-    print("Cover intensity: ", coverIntensity)
-    return coverIntensity
+            strength = -path_loss(d, intersecting_walls)
 
-def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, all_holes, interval = 2.0):
-    x = np.zeros_like(coverIntensity)
-    y = np.zeros_like(coverIntensity)
-    for i in range(len(coverIntensity)):
-        x[i] = valid_grid[i].x
-        y[i] = valid_grid[i].y
-    #fig = plt.figure()
-    #plt.hist2d(x, y, weights=coverIntensity)
-    #plt.show()
+            if(strength > result[i]):
+                result[i] = strength
 
-    #interval = 100
-    kwargs = {"cap_style": CAP_STYLE.square, "join_style": JOIN_STYLE.mitre}
-    #print(room_polygon.geom_type)
-    boundary = room_polygon.buffer(interval/2, **kwargs).buffer(-interval/2, **kwargs)
+    return result
 
-    if boundary.geom_type == 'Polygon':
-        boundary = MultiPolygon([boundary])
+def create_intensity_map(router_coverages, intensities, router_positions, room_polygon, all_holes, grid_resolution = 2.0):
+    # Clear plot
+    plt.clf()
 
-    print(boundary.geom_type)
-    #print("Boundary: ", boundary)
+    router_position_xs, router_position_ys = zip(*[(point.x, point.y) for point in router_positions])
 
-    """
-    
-    """
-
-    poly_verts = []
-    for geom in boundary.geoms:
-        k, n = geom.exterior.xy
-        for i in range(len(k)):
-            poly_verts.append((k[i], n[i]))
-    #print(poly_verts)
-
-    poly_codes = [mpath.Path.MOVETO] + (len(poly_verts) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
-
-    # create a Path from the polygon vertices
-    path = mpath.Path(poly_verts, poly_codes)
-
-    # create a Patch from the path
-    patch = mpatches.PathPatch(path, facecolor='none', edgecolor='k')
-    background_color = mpatches.PathPatch(path, facecolor='#440154')
-
-
-
-    plt.figure()
-    ax = plt.gca()
-    ax.add_patch(background_color)
-    #coloer_patch = mpatches.Patch(boundary, facecolor="blue")
-    #ax.add_patch(coloer_patch)
-    
-    print(len(x))
-    print(len(y))
-    print(len(coverIntensity))
-
-    cont = plt.tricontourf(np.array(x, dtype="float64"), np.array(y, dtype="float64"), np.array(coverIntensity, dtype="float64"))
-    plt.colorbar()
-    tol = 1e-5
-    for i in range(len(res.x)):
-        if(res.x[i]+tol >= 1):
-            plt.plot(valid_grid[i].x, valid_grid[i].y, marker="o", markerfacecolor="cyan", markeredgecolor="black")
-
-    # add the patch to the axes
-    ax.add_patch(patch)  ## TRY COMMENTING THIS OUT
-
-
-    for col in cont.collections:
-        col.set_clip_path(patch)
+    room_boundaries = []
+    room_path_codes = []
+    room_patches = []
 
     for geom in room_polygon.geoms:
-        xe, ye = geom.exterior.xy
-        plt.plot(xe, ye, color="red", alpha=0.7)
+        room_boundary = []
+        room_xs, room_ys = geom.exterior.xy
+        for i in range(len(room_xs)):
+            room_boundary.append((room_xs[i], room_ys[i]))
 
-    for my_object in all_holes:
-        for my_hole in my_object:
-            my_hole_x = []
-            my_hole_y = []
-            for item in my_hole:
-                #print(item)
-                my_hole_x.append(item.x)
-                my_hole_y.append(item.y)
-            plt.fill(my_hole_x, my_hole_y, color="white")
-            plt.plot(my_hole_x, my_hole_y, color="red")
+        room_boundaries.append(room_boundary)
 
-    return
+    # create a patch for each room
+    for room_boundary in room_boundaries:
+        codes = [mpath.Path.MOVETO] + (len(room_boundary) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
+        room_path_codes.append(codes)
 
-def getEquidistantPoints(p1, p2, parts):
+        room_path = mpath.Path(room_boundary, codes)
+        room_patch = mpatches.PathPatch(room_path, facecolor='none', edgecolor='k')
+        room_patches.append(room_patch)
+
+    axes = plt.gca()
+
+    color_map = plt.tricontourf(np.array(router_position_xs, dtype="float64"), np.array(router_position_ys, dtype="float64"), np.array(intensities, dtype="float64"))
+    plt.colorbar()
+
+
+    # Plot router positions
+    tol = 1e-5
+    for i in range(len(router_coverages.x)):
+        if(router_coverages.x[i]+tol >= 1):
+            plt.plot(router_positions[i].x, router_positions[i].y, marker="o", markerfacecolor="cyan", markeredgecolor="black")
+
+    flat_room_boundaries = [point for boundary in room_boundaries for point in boundary]
+    flat_room_path_codes = [code for path_codes in room_path_codes for code in path_codes]
+
+    # Add patches to the plot
+    for room_patch in room_patches:
+        axes.add_patch(room_patch)
+
+    # Clip outside of rooms
+    all_rooms_patch = mpatches.PathPatch(mpath.Path(flat_room_boundaries, flat_room_path_codes), edgecolor='k', transform=axes.transData)
+    for map_element in color_map.collections:
+        map_element.set_clip_path(all_rooms_patch)
+
+    # Plot room exteriors
+    for geom in room_polygon.geoms:
+        room_xs, room_ys = geom.exterior.xy
+        plt.plot(room_xs, room_ys, color="red", alpha=0.7)
+
+    # Clip room holes
+    for hole in all_holes:
+        hole_xs = [point.x for point in hole]
+        hole_ys = [point.y for point in hole]
+        plt.fill(hole_xs, hole_ys, facecolor="white", edgecolor="red")
+
+    return plt.gcf()
+
+def get_equidistant_points(p1, p2, parts):
     list_of_tuples = list(zip(np.linspace(p1[0], p2[0], parts+1), np.linspace(p1[1], p2[1], parts+1)))
     list_of_lists = [list(elem) for elem in list_of_tuples]
     return(list_of_lists)
