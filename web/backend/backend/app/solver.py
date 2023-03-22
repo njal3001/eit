@@ -1,5 +1,5 @@
 import numpy as np
-from shapely import LineString
+from shapely import LineString, MultiPolygon
 from shapely.geometry import CAP_STYLE, JOIN_STYLE
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -99,36 +99,51 @@ def pathLoss(d, walls = []):
 
 
 def intensity(res, valid_grid, room_polygon):
+
+
     MAX_RADIUS = calc_rad(MAX_LOSS)
-    coverIntensity = np.zeros_like(res.x)
+    coverIntensity = np.zeros_like(valid_grid)
+    #coverIntensity = np.zeros_like(res.x)
+    len_res_x = len(res.x)
     args = np.argwhere(res.x)
     for routerIndex in args:
-        for i, value in enumerate(res.x):
+        for i, value in enumerate(valid_grid):
+        #for i, value in enumerate(res.x):
             d = distance(valid_grid[int(routerIndex)], valid_grid[i])
-            
+
             if d > MAX_RADIUS:
                 continue
-
-            intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
+            
+            if(i <= len_res_x):
+                intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)
+            if(i > len_res_x):
+                intersecting_walls = check_line_of_sight(valid_grid[int(routerIndex)], valid_grid[i], room_polygon)[:-1]
             strength = -pathLoss(d, intersecting_walls)
             #print(strength)
             if(coverIntensity[i] == 0):
                 coverIntensity[i] = strength
             if(strength > coverIntensity[i]):
                 coverIntensity[i] = strength
-    
+
     maxVal = -np.inf
     for i in range(len(coverIntensity)):
         if(coverIntensity[i] < 0 and coverIntensity[i] > maxVal):
             maxVal = coverIntensity[i]
 
+    minVal = np.inf
+    for i in range(len(coverIntensity)):
+        if(coverIntensity[i] < minVal):
+            minVal = coverIntensity[i]
+
     for i in range(len(coverIntensity)):
         if(coverIntensity[i] > 0):
             coverIntensity[i] = maxVal
-    #print("Cover intensity: ", coverIntensity)
+        if(coverIntensity[i] == 0):
+            coverIntensity[i] = minVal
+    print("Cover intensity: ", coverIntensity)
     return coverIntensity
 
-def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
+def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, all_holes, interval = 2.0):
     x = np.zeros_like(coverIntensity)
     y = np.zeros_like(coverIntensity)
     for i in range(len(coverIntensity)):
@@ -138,10 +153,20 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     #plt.hist2d(x, y, weights=coverIntensity)
     #plt.show()
 
-    #interval = 100    
+    #interval = 100
     kwargs = {"cap_style": CAP_STYLE.square, "join_style": JOIN_STYLE.mitre}
+    #print(room_polygon.geom_type)
     boundary = room_polygon.buffer(interval/2, **kwargs).buffer(-interval/2, **kwargs)
+
+    if boundary.geom_type == 'Polygon':
+        boundary = MultiPolygon([boundary])
+
+    print(boundary.geom_type)
     #print("Boundary: ", boundary)
+
+    """
+    
+    """
 
     poly_verts = []
     for geom in boundary.geoms:
@@ -151,7 +176,7 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     #print(poly_verts)
 
     poly_codes = [mpath.Path.MOVETO] + (len(poly_verts) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
-    
+
     # create a Path from the polygon vertices
     path = mpath.Path(poly_verts, poly_codes)
 
@@ -166,16 +191,22 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
     ax.add_patch(background_color)
     #coloer_patch = mpatches.Patch(boundary, facecolor="blue")
     #ax.add_patch(coloer_patch)
+    
+    print(len(x))
+    print(len(y))
+    print(len(coverIntensity))
 
-    cont = plt.tricontourf(x, y, coverIntensity)
+    cont = plt.tricontourf(np.array(x, dtype="float64"), np.array(y, dtype="float64"), np.array(coverIntensity, dtype="float64"))
     plt.colorbar()
     tol = 1e-5
     for i in range(len(res.x)):
         if(res.x[i]+tol >= 1):
-            plt.plot(valid_grid[i].x, valid_grid[i].y, "rD")
+            plt.plot(valid_grid[i].x, valid_grid[i].y, marker="o", markerfacecolor="cyan", markeredgecolor="black")
 
     # add the patch to the axes
     ax.add_patch(patch)  ## TRY COMMENTING THIS OUT
+
+
     for col in cont.collections:
         col.set_clip_path(patch)
 
@@ -183,5 +214,20 @@ def plot_heatmap(res, coverIntensity, valid_grid, room_polygon, interval = 2.0):
         xe, ye = geom.exterior.xy
         plt.plot(xe, ye, color="red", alpha=0.7)
 
-    plt.show()
+    for my_object in all_holes:
+        for my_hole in my_object:
+            my_hole_x = []
+            my_hole_y = []
+            for item in my_hole:
+                #print(item)
+                my_hole_x.append(item.x)
+                my_hole_y.append(item.y)
+            plt.fill(my_hole_x, my_hole_y, color="white")
+            plt.plot(my_hole_x, my_hole_y, color="red")
+
     return
+
+def getEquidistantPoints(p1, p2, parts):
+    list_of_tuples = list(zip(np.linspace(p1[0], p2[0], parts+1), np.linspace(p1[1], p2[1], parts+1)))
+    list_of_lists = [list(elem) for elem in list_of_tuples]
+    return(list_of_lists)

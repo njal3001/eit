@@ -14,6 +14,7 @@ GROUP_ROOM4_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415743596
 GROUP_ROOM5_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.41571780230302&lng=10.40588816732702&z=-1&srid=4326'
 AU1_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415572384234764&lng=10.404863704147175&z=-1&srid=4326'
 R23_URL = 'https://api.mazemap.com/api/pois/closestpoi/?lat=63.415725767409924&lng=10.405624136872206&z=-2&srid=4326'
+AU1_100 = "https://api.mazemap.com/api/pois/closestpoi/?lat=63.41556329578796&lng=10.404975418089634&z=-1&srid=4326"
 
 class Coordinate:
     def __init__(self, longtitude, latitude):
@@ -153,6 +154,7 @@ def get_router_coverage_map(poids):
     coordinate_origin = rooms[0].origin
     all_points = []
     polygons = []
+    all_holes = []
     for r in rooms:
         points = coordinates_to_origin_points(coordinate_origin, r.coordinates)
         hole_points = []
@@ -161,6 +163,7 @@ def get_router_coverage_map(poids):
 
         all_points += points
         polygons.append(Polygon(points, holes=hole_points))
+        all_holes.append(hole_points)
 
     # Merge rooms into single MultiPolygon
     full_polygon = polygons[0]
@@ -173,36 +176,22 @@ def get_router_coverage_map(poids):
     grid = create_bounding_grid(all_points, 3.0)
     valid_grid = list(filter(full_polygon.contains, grid))
 
-    colors = ["red", "blue", "yellow", "orange"]
-    color_index = 0
-    for geom in full_polygon.geoms:
-        xe, ye = geom.exterior.xy
-        plt.plot(xe, ye, color=colors[color_index], alpha=0.5)
-
-        for interior in geom.interiors:
-            xi, yi = zip(*interior.coords[:])
-            plt.plot(xi, yi, color=colors[color_index], alpha=0.5)
-
-        color_index = (color_index + 1) % len(colors)
-
-
-    for p in valid_grid:
-        plt.plot(p.x, p.y, 'o', ms=1, color='black')
-
     covers = solver.solve(valid_grid, full_polygon)
     res = set_cover(np.array(covers))
-    tol = 1e-5
-    for i in range(len(res.x)):
-        if res.x[i]+tol >= 1:
-            cover = covers[i]
-            for j in range(len(cover)):
-                if cover[j] == 1:
-                    p1 = valid_grid[j]
-                    plt.plot(p1.x, p1.y, "o", ms=2, color=colors[color_index], alpha=0.7)
 
-            p = valid_grid[i]
-            plt.plot(p.x, p.y, 'o', ms=5, color='green')
+    list_of_points_on_boundary = []
+    for poly in full_polygon.geoms:
+        list_of_points_on_boundary.append((poly.exterior.coords[:-1]))
+    for i in list_of_points_on_boundary:
+        for j in range(len(i) - 1):
 
-            color_index = (color_index + 1) % len(colors)
+            point_a = [i[j][0], i[j][1]]
+            point_b = [i[j+1][0], i[j+1][1]]
+            my_points_with_space = solver.getEquidistantPoints(point_a, point_b, 40)
+            for k in my_points_with_space:
+                valid_grid.append(Point(k[0], k[1]))
+
+    intensity = solver.intensity(res, valid_grid, full_polygon)
+    solver.plot_heatmap(res, intensity, valid_grid, full_polygon, all_holes, 2.0)
 
     return plt.gcf()
