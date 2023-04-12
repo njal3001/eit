@@ -182,6 +182,6 @@ def get_router_coverage_map(poids):
                 router_positions.append(Point(k[0], k[1]))
 
     intensity = solver.intensity(router_coverages, router_positions, map_polygon)
-    image = solver.create_intensity_map(router_coverages, intensity, router_positions, map_polygon, all_holes, GRID_RESOLUTION)
+    image = solver.create_intensity_map(router_coverages, intensity, router_positions, map_polygon, all_holes)
 
     return image

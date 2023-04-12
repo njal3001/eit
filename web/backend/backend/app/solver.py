@@ -10,7 +10,7 @@ import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 
 WALL_TOLERANCE = 0.20
-MAX_LOSS = 83
+MAX_LOSS = 90
 
 class Wall:
     WOOD = 1
@@ -44,20 +44,17 @@ def solve(router_positions, map_polygon):
     return access_point_covers
 
 def router_radius(max_loss, walls = []):
-    """
-    walls: Wall[]
-    """
     f = 5.2e3
     N = 31
     P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
     """"
     Calculates the radiuses for each number of walls following the ITU model
     for indoor path loss:
-        L = 20log_10(f) + Nlog_10(d) + P_f(n) - 28
-        d = 10^((L - 20log_10(f) - P_f(n) + 28) / N)
+        L = 20*log_10(f) + N*log_10(d) + P_f(n) - 20
+        d = 10^((L - 20log_10(f) - P_f(n) + 20) / N)
     https://arxiv.org/pdf/1707.05554.pdf
     """""
-    exponent = max_loss - 20 * np.log10(f) - P_f(walls) + 28
+    exponent = max_loss - 20 * np.log10(f) - P_f(walls) + 20
     d = 10**(exponent / N)
     return d
 
@@ -95,7 +92,7 @@ def path_loss(d, walls = []):
     f = 5.2e3
     N = 31
     P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
-    return 20 * np.log10(f) + N * np.log10(d) + P_f(walls) - 28
+    return 20 * np.log10(f) + N * np.log10(d) + P_f(walls) - 20
 
 def intensity(router_coverages, router_positions, map_polygon):
     MAX_RADIUS = router_radius(MAX_LOSS)
@@ -119,6 +116,8 @@ def intensity(router_coverages, router_positions, map_polygon):
                 intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
             if(i >= point_count):
                 intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
+                if len(intersecting_walls) > 0:
+                    intersecting_walls.pop()
 
             strength = -path_loss(d, intersecting_walls)
 
@@ -127,7 +126,7 @@ def intensity(router_coverages, router_positions, map_polygon):
 
     return result
 
-def create_intensity_map(router_coverages, intensities, router_positions, room_polygon, all_holes, grid_resolution = 2.0):
+def create_intensity_map(router_coverages, intensities, router_positions, room_polygon, all_holes):
     # Clear plot
     plt.clf()
 

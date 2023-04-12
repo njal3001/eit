@@ -51,7 +51,7 @@ function App() {
 
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://api.mazemap.com/js/v2.0.9/mazemap.min.js'
+    script.src = 'https://api.mazemap.com/js/v2.0.94/mazemap.min.js'
     script.addEventListener('load', initializeMap);
 
     document.body.appendChild(script);
@@ -63,15 +63,17 @@ function App() {
   const initializeMap = () => {
     if (mapRef.current) return;
 
-    mapRef.current = new window.Mazemap.Map({container: 'mazemap-container'}) as Map;
+    const mapOptions = {
+      container: 'mazemap-container',
+      center: { lat: 63.41732271104283, lng: 10.404263674366945 },
+      zoom: 15.5,
+    };
+
+    mapRef.current = new window.Mazemap.Map(mapOptions) as Map;
     mapRef.current.on('load', () => {
       if (!mapRef.current) return;
 
       mapRef.current.on('click', onMapClick);
-      mapRef.current.jumpTo({
-        center: { lat: 63.41732271104283, lng: 10.404263674366945 },
-        zoom: 15.5,
-      });
     })
   }
 
