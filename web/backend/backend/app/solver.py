@@ -100,7 +100,12 @@ def intensity(router_coverages, router_positions, map_polygon):
     result = np.ones_like(router_positions) * (-np.inf)
     point_count = len(router_coverages.x)
 
-    router_indices = np.nonzero(router_coverages.x)[0]
+    router_indices = []
+    tol = 1e-5
+    for i in range(len(router_coverages.x)):
+        if(router_coverages.x[i]+tol >= 1):
+            router_indices.append(i)
+
     for router_index in router_indices:
         for i in range(len(router_positions)):
             d = distance(router_positions[router_index], router_positions[i])
@@ -134,7 +139,6 @@ def create_intensity_map(router_coverages, intensities, router_positions, room_p
 
     room_boundaries = []
     room_path_codes = []
-    room_patches = []
 
     for geom in room_polygon.geoms:
         room_boundary = []
@@ -144,20 +148,15 @@ def create_intensity_map(router_coverages, intensities, router_positions, room_p
 
         room_boundaries.append(room_boundary)
 
-    # create a patch for each room
+    # create path codes for each room
     for room_boundary in room_boundaries:
         codes = [mpath.Path.MOVETO] + (len(room_boundary) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
         room_path_codes.append(codes)
-
-        room_path = mpath.Path(room_boundary, codes)
-        room_patch = mpatches.PathPatch(room_path, facecolor='none', edgecolor='k')
-        room_patches.append(room_patch)
 
     axes = plt.gca()
 
     color_map = plt.tricontourf(np.array(router_position_xs, dtype="float64"), np.array(router_position_ys, dtype="float64"), np.array(intensities, dtype="float64"))
     plt.colorbar()
-
 
     # Plot router positions
     tol = 1e-5
@@ -167,10 +166,6 @@ def create_intensity_map(router_coverages, intensities, router_positions, room_p
 
     flat_room_boundaries = [point for boundary in room_boundaries for point in boundary]
     flat_room_path_codes = [code for path_codes in room_path_codes for code in path_codes]
-
-    # Add patches to the plot
-    for room_patch in room_patches:
-        axes.add_patch(room_patch)
 
     # Clip outside of rooms
     all_rooms_patch = mpatches.PathPatch(mpath.Path(flat_room_boundaries, flat_room_path_codes), edgecolor='k', transform=axes.transData)
