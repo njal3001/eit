@@ -8,8 +8,8 @@ import pickle
 GRID_RESOLUTION = 2.0
 
 class Coordinate:
-    def __init__(self, longtitude, latitude):
-        self.longtitude = longtitude
+    def __init__(self, longitude, latitude):
+        self.longitude = longitude
         self.latitude = latitude
 
 class Room:
@@ -91,16 +91,22 @@ def fetch_floor(building_id, z):
 
     return rooms
 
+def coordinate_to_point(coord):
+    EARTH_RADIUS = 6371000.0
+
+    lat = degree_to_rad(coord.latitude)
+    lon = degree_to_rad(coord.longitude)
+
+    px = EARTH_RADIUS * np.cos(lat) * np.cos(lon)
+    py = EARTH_RADIUS * np.cos(lat) * np.sin(lon)
+
+    return Point(px, py)
 
 def coordinate_difference(start, end):
-    METERS_PER_LATITUDE = 110574.0
+    point_start = coordinate_to_point(start)
+    point_end = coordinate_to_point(end)
 
-    dlong = start.longtitude - end.longtitude
-    dlat = start.latitude - end.latitude
-
-    px = dlong * METERS_PER_LATITUDE * np.cos(degree_to_rad(start.latitude))
-    py = dlat * METERS_PER_LATITUDE
-    return Point(px, py)
+    return Point(point_end.x - point_start.x, point_end.y - point_start.y)
 
 def coordinates_to_origin_points(origin, coords):
     points = []
