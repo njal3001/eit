@@ -11,6 +11,7 @@ import matplotlib.path as mpath
 
 WALL_TOLERANCE = 0.20
 MAX_LOSS = 90
+MINIMUM_PATH_LOSS = 20
 
 class Wall:
     WOOD = 1
@@ -47,13 +48,6 @@ def router_radius(max_loss, walls = []):
     f = 5.2e3
     N = 31
     P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
-    """"
-    Calculates the radiuses for each number of walls following the ITU model
-    for indoor path loss:
-        L = 20*log_10(f) + N*log_10(d) + P_f(n) - 20
-        d = 10^((L - 20log_10(f) - P_f(n) + 20) / N)
-    https://arxiv.org/pdf/1707.05554.pdf
-    """""
     exponent = max_loss - 20 * np.log10(f) - P_f(walls) + 20
     d = 10**(exponent / N)
     return d
@@ -98,32 +92,22 @@ def intensity(router_coverages, router_positions, map_polygon):
     MAX_RADIUS = router_radius(MAX_LOSS)
 
     result = np.ones_like(router_positions) * (-np.inf)
-    point_count = len(router_coverages.x)
+    point_count = len(router_coverages)
 
-    router_indices = []
-    tol = 1e-5
-    for i in range(len(router_coverages.x)):
-        if(router_coverages.x[i]+tol >= 1):
-            router_indices.append(i)
+    router_indices = np.nonzero(router_coverages)[0]
 
     for router_index in router_indices:
         for i in range(len(router_positions)):
             d = distance(router_positions[router_index], router_positions[i])
 
             if router_index == i:
-                result[i] = 0.0
+                result[i] = -MINIMUM_PATH_LOSS
                 continue
 
-            if d > MAX_RADIUS and i < point_count:
+            if d > MAX_RADIUS:
                 continue
 
-            if(i < point_count):
-                intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
-            if(i >= point_count):
-                intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
-                if len(intersecting_walls) > 0:
-                    intersecting_walls.pop()
-
+            intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
             strength = -path_loss(d, intersecting_walls)
 
             if(strength > result[i]):
@@ -134,6 +118,7 @@ def intensity(router_coverages, router_positions, map_polygon):
 def create_intensity_map(router_coverages, intensities, router_positions, room_polygon, all_holes):
     # Clear plot
     plt.clf()
+    plt.axis('off')
 
     router_position_xs, router_position_ys = zip(*[(point.x, point.y) for point in router_positions])
 
@@ -159,9 +144,8 @@ def create_intensity_map(router_coverages, intensities, router_positions, room_p
     plt.colorbar()
 
     # Plot router positions
-    tol = 1e-5
-    for i in range(len(router_coverages.x)):
-        if(router_coverages.x[i]+tol >= 1):
+    for i in range(len(router_coverages)):
+        if(router_coverages[i] == 1):
             plt.plot(router_positions[i].x, router_positions[i].y, marker="o", markerfacecolor="cyan", markeredgecolor="black")
 
     flat_room_boundaries = [point for boundary in room_boundaries for point in boundary]

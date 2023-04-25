@@ -3,7 +3,7 @@ from django.http import HttpResponse
 import matplotlib.pyplot as plt
 import io
 
-from .app.map_gen import get_router_coverage_map
+from .app.map_gen import get_router_coverage_map_from_poids
 import urllib, base64
 
 CORS_HEADERS = {
@@ -16,7 +16,7 @@ def send_router_coverage_map(request):
     poids_str = request.GET.getlist('poid')
     poids = [int(sid) for sid in poids_str]
 
-    fig = get_router_coverage_map(poids)
+    fig = get_router_coverage_map_from_poids(poids)
 
     buf = io.BytesIO()
     fig.savefig(buf, format='png')
