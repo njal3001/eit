@@ -2,23 +2,14 @@ import numpy as np
 from shapely import LineString, MultiPolygon
 from shapely.geometry import CAP_STYLE, JOIN_STYLE
 
-import matplotlib
-matplotlib.use('Agg')
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import matplotlib.path as mpath
-
 WALL_TOLERANCE = 0.20
-MAX_LOSS = 90
-MINIMUM_PATH_LOSS = 20
 
 class Wall:
     WOOD = 1
     CONCRETE = 2
 
-def solve(router_positions, map_polygon):
-    MAX_RADIUS = router_radius(MAX_LOSS)
+def solve(router_positions, map_polygon, max_path_loss):
+    MAX_RADIUS = router_radius(max_path_loss)
     access_point_covers = []
 
     pindex = 0
@@ -31,11 +22,10 @@ def solve(router_positions, map_polygon):
             point = router_positions[i]
             d = distance(point, access_point_candidate)
 
-            if d > MAX_RADIUS:
-                continue
-
-            intersecting_walls = check_line_of_sight(point, access_point_candidate, map_polygon)
-            radius = router_radius(MAX_LOSS, intersecting_walls)
+            intersecting_walls = check_line_of_sight(point,
+                                                     access_point_candidate,
+                                                     map_polygon)
+            radius = router_radius(max_path_loss, intersecting_walls)
 
             if d <= radius:
                 access_point_cover[i] = 1
@@ -47,7 +37,8 @@ def solve(router_positions, map_polygon):
 def router_radius(max_loss, walls = []):
     f = 5.2e3
     N = 31
-    P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
+    P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67
+                                 for wall in wall_list])
     exponent = max_loss - 20 * np.log10(f) - P_f(walls) + 20
     d = 10**(exponent / N)
     return d
@@ -88,88 +79,8 @@ def path_loss(d, walls = []):
     P_f = lambda wall_list: sum([2.73 if wall == Wall.CONCRETE else 2.67 for wall in wall_list])
     return 20 * np.log10(f) + N * np.log10(d) + P_f(walls) - 20
 
-def intensity(router_coverages, router_positions, map_polygon):
-    MAX_RADIUS = router_radius(MAX_LOSS)
-
-    result = np.ones_like(router_positions) * (-np.inf)
-    point_count = len(router_coverages)
-
-    router_indices = np.nonzero(router_coverages)[0]
-
-    for router_index in router_indices:
-        for i in range(len(router_positions)):
-            d = distance(router_positions[router_index], router_positions[i])
-
-            if router_index == i:
-                result[i] = -MINIMUM_PATH_LOSS
-                continue
-
-            if d > MAX_RADIUS:
-                continue
-
-            intersecting_walls = check_line_of_sight(router_positions[router_index], router_positions[i], map_polygon)
-            strength = -path_loss(d, intersecting_walls)
-
-            if(strength > result[i]):
-                result[i] = strength
-
-    return result
-
-def create_intensity_map(router_coverages, intensities, router_positions, room_polygon, all_holes):
-    # Clear plot
-    plt.clf()
-    plt.axis('off')
-
-    router_position_xs, router_position_ys = zip(*[(point.x, point.y) for point in router_positions])
-
-    room_boundaries = []
-    room_path_codes = []
-
-    for geom in room_polygon.geoms:
-        room_boundary = []
-        room_xs, room_ys = geom.exterior.xy
-        for i in range(len(room_xs)):
-            room_boundary.append((room_xs[i], room_ys[i]))
-
-        room_boundaries.append(room_boundary)
-
-    # create path codes for each room
-    for room_boundary in room_boundaries:
-        codes = [mpath.Path.MOVETO] + (len(room_boundary) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
-        room_path_codes.append(codes)
-
-    axes = plt.gca()
-
-    color_map = plt.tricontourf(np.array(router_position_xs, dtype="float64"), np.array(router_position_ys, dtype="float64"), np.array(intensities, dtype="float64"))
-    plt.colorbar()
-
-    # Plot router positions
-    for i in range(len(router_coverages)):
-        if(router_coverages[i] == 1):
-            plt.plot(router_positions[i].x, router_positions[i].y, marker="o", markerfacecolor="cyan", markeredgecolor="black")
-
-    flat_room_boundaries = [point for boundary in room_boundaries for point in boundary]
-    flat_room_path_codes = [code for path_codes in room_path_codes for code in path_codes]
-
-    # Clip outside of rooms
-    all_rooms_patch = mpatches.PathPatch(mpath.Path(flat_room_boundaries, flat_room_path_codes), edgecolor='k', transform=axes.transData)
-    for map_element in color_map.collections:
-        map_element.set_clip_path(all_rooms_patch)
-
-    # Plot room exteriors
-    for geom in room_polygon.geoms:
-        room_xs, room_ys = geom.exterior.xy
-        plt.plot(room_xs, room_ys, color="red", alpha=0.7)
-
-    # Clip room holes
-    for hole in all_holes:
-        hole_xs = [point.x for point in hole]
-        hole_ys = [point.y for point in hole]
-        plt.fill(hole_xs, hole_ys, facecolor="white", edgecolor="red")
-
-    return plt.gcf()
-
 def get_equidistant_points(p1, p2, parts):
-    list_of_tuples = list(zip(np.linspace(p1[0], p2[0], parts+1), np.linspace(p1[1], p2[1], parts+1)))
+    list_of_tuples = list(zip(np.linspace(p1[0], p2[0], parts+1),
+                              np.linspace(p1[1], p2[1], parts+1)))
     list_of_lists = [list(elem) for elem in list_of_tuples]
     return(list_of_lists)

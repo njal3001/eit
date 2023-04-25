@@ -2,10 +2,9 @@ import requests
 import numpy as np
 from shapely import Point, Polygon, MultiPolygon
 from . import solver
+from . import viz
 from .optimization import set_cover
 import pickle
-
-GRID_RESOLUTION = 1.0
 
 class Coordinate:
     def __init__(self, longitude, latitude):
@@ -153,26 +152,55 @@ def create_rectangular_grid(x0, y0, x1, y1, resolution):
     points = zip(xv.flatten(), yv.flatten())
     return [Point(p[0], p[1]) for p in points]
 
-def get_router_coverage_map_from_poids(poids):
+def get_router_coverage_map_from_poids(poids, grid_resolution, max_path_loss):
     rooms = fetch_rooms(poids)
-    return get_router_coverage_map(rooms)
+    return get_router_coverage_map(rooms, grid_resolution, max_path_loss)
 
-def get_router_coverage_map_from_floor(building_id, z):
+def get_room_map_from_poids(poids, grid_resolution):
+    rooms = fetch_rooms(poids)
+    return get_room_map(rooms, grid_resolution)
+
+def get_router_coverage_map_from_floor(building_id, z, grid_resolution):
     rooms = fetch_floor(building_id, z)
-    return get_router_coverage_map(rooms)
+    return get_router_coverage_map(rooms, grid_resolution)
 
-def get_router_coverage_map(rooms):
+def get_room_map(rooms, grid_resolution):
     room_map = RoomMap(rooms)
 
     bounds = room_map.polygon.bounds
-    grid = create_rectangular_grid(bounds[0], bounds[1], bounds[2], bounds[3], GRID_RESOLUTION)
-    router_positions = list(filter(room_map.polygon.contains, grid))
-
-    covers = solver.solve(router_positions, room_map.polygon)
-    router_coverages = set_cover(np.array(covers))
-
-    intensity = solver.intensity(router_coverages, router_positions, room_map.polygon)
-    image = solver.create_intensity_map(router_coverages, intensity, router_positions, room_map.polygon, room_map.holes)
+    image = viz.show_room_map(room_map, bounds[0], bounds[1], bounds[2],
+                              bounds[3], grid_resolution)
 
     return image
 
+def get_router_coverage_map(rooms, grid_resolution, max_path_loss):
+    room_map = RoomMap(rooms)
+
+    bounds = room_map.polygon.bounds
+    grid = create_rectangular_grid(
+            bounds[0], bounds[1], bounds[2], bounds[3], grid_resolution)
+
+    router_positions = list(filter(room_map.polygon.contains, grid))
+
+    covers = solver.solve(router_positions, room_map.polygon, max_path_loss)
+    router_coverages = set_cover(np.array(covers))
+
+    # Add extra points on boundary to improve visualization
+    list_of_points_on_boundary = []
+    for poly in room_map.polygon.geoms:
+        list_of_points_on_boundary.append((poly.exterior.coords[:-1]))
+    for i in list_of_points_on_boundary:
+        for j in range(len(i) - 1):
+            point_a = [i[j][0], i[j][1]]
+            point_b = [i[j+1][0], i[j+1][1]]
+            my_points_with_space = solver.get_equidistant_points(point_a, point_b, 4)
+            for k in my_points_with_space:
+                router_positions.append(Point(k[0], k[1]))
+
+    intensity = viz.intensity(router_coverages, router_positions,
+                              room_map.polygon, max_path_loss)
+    image = viz.create_intensity_map(router_coverages, intensity,
+                                     router_positions, room_map.polygon,
+                                     room_map.holes)
+
+    return image
