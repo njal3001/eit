@@ -7,9 +7,10 @@ def set_cover(A):
     constraints = LinearConstraint(A, lb=np.ones_like(A[0]))
     bounds = Bounds(lb=0, ub=1)
     integrality = np.ones_like(A[0])
-    res = milp(c=c, constraints=constraints, bounds=bounds, integrality=integrality)
+    cover = milp(c=c, constraints=constraints, bounds=bounds, integrality=integrality)
 
-    return res
+    result = np.where(cover.x > 0.5, 1, 0)
+    return result
 
 def test_function():
     N = 5
