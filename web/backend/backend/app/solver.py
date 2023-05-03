@@ -22,6 +22,9 @@ def solve(router_positions, map_polygon, max_path_loss):
             point = router_positions[i]
             d = distance(point, access_point_candidate)
 
+            if d > MAX_RADIUS:
+                continue
+
             intersecting_walls = check_line_of_sight(point,
                                                      access_point_candidate,
                                                      map_polygon)

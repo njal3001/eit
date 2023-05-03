@@ -50,7 +50,7 @@ function App() {
   const [mapSrc, setMapSrc] = useState<string>('');
   const [coverageSrc, setCoverageSrc] = useState<string>('');
   const [gridResolution, setGridResolution] = useState<number>(1.0);
-  const [maxPathLoss, setMaxPathLoss] = useState<number>(90);
+  const [maxPathLoss, setMaxPathLoss] = useState<number>(87);
 
   useEffect(() => {
     const script = document.createElement('script');

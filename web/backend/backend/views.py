@@ -2,6 +2,7 @@ from django.http import HttpResponse
 
 import matplotlib.pyplot as plt
 import io
+import time
 
 from .app.map_gen import get_router_coverage_map_from_poids, get_room_map_from_poids
 import urllib, base64
@@ -28,8 +29,11 @@ def send_router_coverage_map(request):
     grid_resolution = float(request.GET.get('gres'))
     max_path_loss = float(request.GET.get('maxloss'))
 
+    start_time = time.time()
     fig = get_router_coverage_map_from_poids(poids, grid_resolution,
                                              max_path_loss)
+
+    print(f'Time: {time.time() - start_time}')
     return create_image_response_from_figure(fig)
 
 def send_room_map(request):

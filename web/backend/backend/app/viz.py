@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 
-MINIMUM_PATH_LOSS = 20
-MINIMUM_SIGNAL_DISTANCE = 0.1
+SIGNAL_DISTANCE_CUTOFF = 0.1
 
 def intensity(router_coverages, router_positions, map_polygon, max_path_loss):
     MAX_RADIUS = router_radius(max_path_loss)
@@ -20,10 +19,7 @@ def intensity(router_coverages, router_positions, map_polygon, max_path_loss):
     for router_index in router_indices:
         for i in range(len(router_positions)):
             d = distance(router_positions[router_index], router_positions[i])
-
-            if d < MINIMUM_SIGNAL_DISTANCE:
-                result[i] = -MINIMUM_PATH_LOSS
-                continue
+            d = max(d, SIGNAL_DISTANCE_CUTOFF)
 
             if d > MAX_RADIUS and i < point_count:
                 continue
@@ -45,7 +41,6 @@ def intensity(router_coverages, router_positions, map_polygon, max_path_loss):
 def create_intensity_map(router_coverages, intensities, router_positions, room_polygon, all_holes):
     # Clear plot
     plt.clf()
-    plt.axis('off')
 
     router_position_xs, router_position_ys = zip(*[(point.x, point.y) for point in router_positions])
 
@@ -65,10 +60,14 @@ def create_intensity_map(router_coverages, intensities, router_positions, room_p
         codes = [mpath.Path.MOVETO] + (len(room_boundary) - 2) * [mpath.Path.LINETO] + [mpath.Path.CLOSEPOLY]
         room_path_codes.append(codes)
 
+    plt.xlabel('x (m)', fontsize=14)
+    plt.ylabel('y (m)', fontsize=14)
+
     axes = plt.gca()
 
     color_map = plt.tricontourf(np.array(router_position_xs, dtype="float64"), np.array(router_position_ys, dtype="float64"), np.array(intensities, dtype="float64"))
-    plt.colorbar()
+    colorbar = plt.colorbar()
+    colorbar.ax.set_title('Signal loss (dBm)', fontsize=14)
 
     # Plot router positions
     for i in range(len(router_coverages)):
